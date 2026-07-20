@@ -66,4 +66,22 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
             .ThenBy(w => w.WeekNumber)
             .ToListAsync();
     }
+
+    public async Task AddMealAsync(Meal meal)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        context.Set<Meal>().Add(meal);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task RemoveMealAsync(Guid mealId)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        var meal = await context.Set<Meal>().FirstOrDefaultAsync(m => m.Id == mealId);
+        if (meal is not null)
+        {
+            context.Set<Meal>().Remove(meal);
+            await context.SaveChangesAsync();
+        }
+    }
 }

@@ -1,17 +1,22 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<div class="app-shell">
+    <header class="app-header">
+        <span class="app-title">Matplaneraren</span>
+    </header>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
+    <main class="app-body">
+        @Body
     </main>
+
+    <nav class="tab-bar">
+        <NavLink class="tab" href="" Match="NavLinkMatch.All">
+            <span class="tab-icon">📅</span>
+            <span class="tab-label">Vecka</span>
+        </NavLink>
+        <NavLink class="tab" href="foods">
+            <span class="tab-icon">🥕</span>
+            <span class="tab-label">Råvaror</span>
+        </NavLink>
+    </nav>
 </div>

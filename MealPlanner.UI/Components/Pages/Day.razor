@@ -1,0 +1,172 @@
+@page "/day/{Year:int}/{Week:int}/{Sort:int}"
+@using Application.Services
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject WeeklyPlannerService PlannerService
+@inject IFoodItemRepository FoodRepo
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick="GoBack">‹ Vecka @Week</button>
+
+@if (day is null)
+{
+    <p class="muted">Laddar...</p>
+}
+else
+{
+    <section class="day-header">
+        <h1 class="day-title">@ToSwedish(day.Day)</h1>
+        <div class="day-total">@day.TotalCalories <span class="unit">kcal</span></div>
+    </section>
+
+    @if (errorMessage is not null)
+    {
+        <div class="banner-error">@errorMessage</div>
+    }
+
+    @foreach (var group in Enum.GetValues<MealType>())
+    {
+        var meals = day.Meals.Where(m => m.Type == group).ToList();
+        if (meals.Count == 0) continue;
+
+        <div class="meal-group">
+            <div class="meal-group-head">
+                <span>@ToSwedish(group)</span>
+                <span class="muted">@meals.Sum(m => m.CalculatedCalories) kcal</span>
+            </div>
+            @foreach (var meal in meals)
+            {
+                <div class="meal-row">
+                    <div>
+                        <div class="meal-name">@(meal.Food?.Name ?? "Okänd råvara")</div>
+                        <div class="meal-sub">@meal.WeightInGrams g</div>
+                    </div>
+                    <div class="meal-right">
+                        <span class="meal-kcal">@meal.CalculatedCalories</span>
+                        <button class="del-btn" @onclick="() => Remove(meal.Id)" aria-label="Ta bort">×</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="add-card">
+        <h2 class="add-title">Lägg till måltid</h2>
+
+        <label class="field">
+            <span>Måltid</span>
+            <select @bind="newType">
+                @foreach (var t in Enum.GetValues<MealType>())
+                {
+                    <option value="@t">@ToSwedish(t)</option>
+                }
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Råvara</span>
+            <select @bind="newFoodId">
+                <option value="">Välj...</option>
+                @foreach (var f in foods)
+                {
+                    <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100g)</option>
+                }
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Vikt i gram</span>
+            <input type="number" min="1" @bind="newGrams" />
+        </label>
+
+        <div class="preview">≈ @PreviewCalories kcal</div>
+
+        <button class="btn-primary" @onclick="Add" disabled="@(string.IsNullOrEmpty(newFoodId))">
+            Lägg till
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public int Year { get; set; }
+    [Parameter] public int Week { get; set; }
+    [Parameter] public int Sort { get; set; }
+
+    private DailyPlan? day;
+    private List<FoodItem> foods = new();
+    private string? errorMessage;
+
+    private MealType newType = MealType.Breakfast;
+    private string newFoodId = "";
+    private int newGrams = 100;
+
+    private int PreviewCalories
+    {
+        get
+        {
+            if (!Guid.TryParse(newFoodId, out var id)) return 0;
+            var food = foods.FirstOrDefault(f => f.Id == id);
+            return food is null ? 0 : (int)Math.Round((double)food.CaloriesPer100g * newGrams / 100);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        foods = (await FoodRepo.GetAllAsync()).ToList();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var week = await PlannerService.GetOrCreateWeekAsync(Year, Week);
+        day = week.Days.FirstOrDefault(d => d.SortOrder == Sort);
+    }
+
+    private async Task Add()
+    {
+        if (day is null || !Guid.TryParse(newFoodId, out var foodId)) return;
+
+        try
+        {
+            await PlannerService.AddMealAsync(day.Id, newType, foodId, newGrams);
+            newFoodId = "";
+            newGrams = 100;
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task Remove(Guid mealId)
+    {
+        await PlannerService.RemoveMealAsync(mealId);
+        await LoadAsync();
+    }
+
+    private void GoBack() => Nav.NavigateTo("/");
+
+    private static string ToSwedish(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday => "Måndag",
+        DayOfWeek.Tuesday => "Tisdag",
+        DayOfWeek.Wednesday => "Onsdag",
+        DayOfWeek.Thursday => "Torsdag",
+        DayOfWeek.Friday => "Fredag",
+        DayOfWeek.Saturday => "Lördag",
+        _ => "Söndag"
+    };
+
+    private static string ToSwedish(MealType t) => t switch
+    {
+        MealType.Breakfast => "Frukost",
+        MealType.Lunch => "Lunch",
+        MealType.Snack => "Mellanmål",
+        MealType.Dinner => "Middag",
+        MealType.EveningMeal => "Kvällsmat",
+        _ => "Fika"
+    };
+}

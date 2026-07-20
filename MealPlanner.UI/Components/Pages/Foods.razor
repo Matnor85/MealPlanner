@@ -1,0 +1,115 @@
+@page "/foods"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IFoodItemRepository FoodRepo
+
+<h1 class="page-title">Råvaror</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="add-card">
+    <h2 class="add-title">Ny råvara</h2>
+
+    <label class="field">
+        <span>Namn</span>
+        <input @bind="name" placeholder="t.ex. Keso" />
+    </label>
+
+    <label class="field">
+        <span>Kalorier per 100 g</span>
+        <input type="number" min="0" @bind="kcal" />
+    </label>
+
+    <div class="chips">
+        <label class="chip"><input type="checkbox" @bind="vegan" /> Vegansk</label>
+        <label class="chip"><input type="checkbox" @bind="lactose" /> Laktos</label>
+        <label class="chip"><input type="checkbox" @bind="gluten" /> Gluten</label>
+        <label class="chip"><input type="checkbox" @bind="nuts" /> Nötter</label>
+        <label class="chip"><input type="checkbox" @bind="milkPowder" /> Mjölkpulver</label>
+    </div>
+
+    <button class="btn-primary" @onclick="Add" disabled="@string.IsNullOrWhiteSpace(name)">
+        Spara råvara
+    </button>
+</div>
+
+<div class="food-list">
+    @foreach (var f in foods)
+    {
+        <div class="food-row">
+            <div>
+                <div class="food-name">@f.Name</div>
+                <div class="food-tags">
+                    @f.CaloriesPer100g kcal/100 g
+                    @if (f.Vegan)
+                    {
+                        <span class="tag">vegansk</span>
+                    }
+                    @if (f.Lactose)
+                    {
+                        <span class="tag">laktos</span>
+                    }
+                    @if (f.Gluten)
+                    {
+                        <span class="tag">gluten</span>
+                    }
+                    @if (f.Nuts)
+                    {
+                        <span class="tag">nötter</span>
+                    }
+                </div>
+            </div>
+            <button class="del-btn" @onclick="() => Remove(f.Id)" aria-label="Ta bort">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<FoodItem> foods = new();
+    private string? errorMessage;
+
+    private string name = "";
+    private int kcal;
+    private bool vegan, lactose, gluten, nuts, milkPowder;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => foods = (await FoodRepo.GetAllAsync()).ToList();
+
+    private async Task Add()
+    {
+        await FoodRepo.AddAsync(new FoodItem
+        {
+            Name = name.Trim(),
+            CaloriesPer100g = kcal,
+            Vegan = vegan,
+            Lactose = lactose,
+            Gluten = gluten,
+            Nuts = nuts,
+            MilkPowder = milkPowder
+        });
+
+        name = ""; kcal = 0;
+        vegan = lactose = gluten = nuts = milkPowder = false;
+        errorMessage = null;
+        await LoadAsync();
+    }
+
+    private async Task Remove(Guid id)
+    {
+        try
+        {
+            await FoodRepo.DeleteAsync(id);
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

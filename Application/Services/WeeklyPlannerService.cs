@@ -102,4 +102,20 @@ public class WeeklyPlannerService
 
         return result;
     }
+
+    public async Task AddMealAsync(Guid dailyPlanId, MealType type, Guid foodId, int grams)
+    {
+        if (grams <= 0)
+            throw new ArgumentException("Vikten måste vara större än noll.", nameof(grams));
+
+        await _repository.AddMealAsync(new Meal
+        {
+            DailyPlanId = dailyPlanId,
+            Type = type,
+            FoodId = foodId,
+            WeightInGrams = grams
+        });
+    }
+
+    public Task RemoveMealAsync(Guid mealId) => _repository.RemoveMealAsync(mealId);
 }

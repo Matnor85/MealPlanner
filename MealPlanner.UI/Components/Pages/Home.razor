@@ -4,89 +4,131 @@
 @using Domain.Entities
 
 @inject WeeklyPlannerService PlannerService
+@inject NavigationManager Nav
 
-<div class="container text-center mt-4">
-    <h1>Matplaneraren</h1>
-
-    @if (isLoading)
-    {
-        <p><em>Laddar schema...</em></p>
-    }
-    else if (errorMessage is not null)
-    {
-        <div class="alert alert-danger">@errorMessage</div>
-    }
-    else if (currentWeek != null)
-    {
-        <div class="card mt-4 shadow">
-            <div class="card-body">
-                <h2>Vecka @currentWeek.WeekNumber, @currentWeek.Year</h2>
-                <p class="text-muted">Totalt: @currentWeek.TotalWeeklyCalories kcal</p>
-
-                <button class="btn btn-primary mt-2" @onclick="GoToNextWeek">
-                    Kopiera till nästa vecka
-                </button>
+@if (isLoading)
+{
+    <p class="muted">Laddar...</p>
+}
+else if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+else if (week is not null)
+{
+    <section class="week-header">
+        <div class="week-nav">
+            <button class="icon-btn" @onclick="() => ShiftWeek(-1)" aria-label="Föregående vecka">‹</button>
+            <div>
+                <div class="week-number">Vecka @week.WeekNumber</div>
+                <div class="week-year">@week.Year</div>
             </div>
+            <button class="icon-btn" @onclick="() => ShiftWeek(1)" aria-label="Nästa vecka">›</button>
         </div>
 
-        <div class="mt-4">
-            @foreach (var day in currentWeek.Days)
-            {
-                <div class="card mb-2">
-                    <div class="card-body d-flex justify-content-between">
-                        <strong>@ToSwedish(day.Day)</strong>
-                        <span>@day.TotalCalories kcal</span>
-                    </div>
-                </div>
-            }
+        <div class="week-total">
+            <span class="big-number">@week.TotalWeeklyCalories</span>
+            <span class="unit">kcal totalt</span>
+            <span class="sub">snitt @(week.TotalWeeklyCalories / 7) kcal/dag</span>
         </div>
-    }
-</div>
+
+        <button class="btn-primary" @onclick="CopyToNext" disabled="@isWorking">
+            Kopiera till nästa vecka
+        </button>
+    </section>
+
+    <section class="day-list">
+        @foreach (var day in week.Days)
+        {
+            <button class="day-card" @onclick="() => OpenDay(day.SortOrder)">
+                <div class="day-left">
+                    <span class="day-name">@ToSwedish(day.Day)</span>
+                    <span class="day-meals">
+                        @(day.Meals.Count == 0 ? "Inget planerat" :
+                          day.Meals.Count == 1 ? "1 måltid" : $"{day.Meals.Count} måltider")
+                    </span>
+                </div>
+                <div class="day-right">
+                    <span class="day-kcal">@day.TotalCalories</span>
+                    <span class="unit-sm">kcal</span>
+                </div>
+            </button>
+        }
+    </section>
+}
 
 @code {
-    private WeeklyPlan? currentWeek;
+    private WeeklyPlan? week;
     private bool isLoading = true;
+    private bool isWorking;
     private string? errorMessage;
+
+    private int year;
+    private int weekNumber;
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            // Aktuell vecka i stället för hårdkodad 2026/32
-            var today = DateTime.Today;
-            currentWeek = await PlannerService.GetOrCreateWeekAsync(
-                ISOWeek.GetYear(today),
-                ISOWeek.GetWeekOfYear(today));
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Kunde inte ladda veckan: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        var today = DateTime.Today;
+        year = ISOWeek.GetYear(today);
+        weekNumber = ISOWeek.GetWeekOfYear(today);
+        await LoadAsync();
     }
 
-    private async Task GoToNextWeek()
+    private async Task LoadAsync()
     {
-        if (currentWeek is null) return;
-
         isLoading = true;
+        errorMessage = null;
         try
         {
-            currentWeek = await PlannerService.CopyWeekToNextAsync(
-                currentWeek.Year, currentWeek.WeekNumber);
+            week = await PlannerService.GetOrCreateWeekAsync(year, weekNumber);
         }
         catch (Exception ex)
         {
-            errorMessage = $"Kunde inte kopiera veckan: {ex.Message}";
+            errorMessage = ex.Message;
         }
         finally
         {
             isLoading = false;
         }
     }
+
+    private async Task ShiftWeek(int delta)
+    {
+        if (delta > 0)
+        {
+            if (weekNumber >= ISOWeek.GetWeeksInYear(year)) { weekNumber = 1; year++; }
+            else weekNumber++;
+        }
+        else
+        {
+            if (weekNumber <= 1) { year--; weekNumber = ISOWeek.GetWeeksInYear(year); }
+            else weekNumber--;
+        }
+        await LoadAsync();
+    }
+
+    private async Task CopyToNext()
+    {
+        if (week is null) return;
+        isWorking = true;
+        try
+        {
+            var copy = await PlannerService.CopyWeekToNextAsync(week.Year, week.WeekNumber);
+            year = copy.Year;
+            weekNumber = copy.WeekNumber;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isWorking = false;
+        }
+    }
+
+    private void OpenDay(int sortOrder) => Nav.NavigateTo($"/day/{year}/{weekNumber}/{sortOrder}");
 
     private static string ToSwedish(DayOfWeek day) => day switch
     {

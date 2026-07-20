@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
+﻿using Application.Services;
+using Domain.Entities;
 using Domain.Interfaces;
 using Infrastructure.Data;
 using Infrastructure.Repositories;
-using Application.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace MealPlanner.UI;
 
@@ -34,6 +35,7 @@ public static class MauiProgram
             options.UseSqlite($"Filename={dbPath}"));
 
         builder.Services.AddScoped<IWeeklyPlanRepository, WeeklyPlanRepository>();
+        builder.Services.AddScoped<IFoodItemRepository, FoodItemRepository>();
         builder.Services.AddScoped<WeeklyPlannerService>();
 
         var app = builder.Build();
