@@ -11,40 +11,26 @@
     <div class="banner-error">@errorMessage</div>
 }
 
-<div class="add-card">
-    <h2 class="add-title">Ny råvara</h2>
-
-    <label class="field">
-        <span>Namn</span>
-        <input @bind="name" placeholder="t.ex. Keso" />
-    </label>
-
-    <label class="field">
-        <span>Kalorier per 100 g</span>
-        <input type="number" min="0" @bind="kcal" />
-    </label>
-
-    <div class="chips">
-        <label class="chip"><input type="checkbox" @bind="vegan" /> Vegansk</label>
-        <label class="chip"><input type="checkbox" @bind="lactose" /> Laktos</label>
-        <label class="chip"><input type="checkbox" @bind="gluten" /> Gluten</label>
-        <label class="chip"><input type="checkbox" @bind="nuts" /> Nötter</label>
-        <label class="chip"><input type="checkbox" @bind="milkPowder" /> Mjölkpulver</label>
-    </div>
-
-    <button class="btn-primary" @onclick="Add" disabled="@string.IsNullOrWhiteSpace(name)">
-        Spara råvara
-    </button>
+<div class="filter-row">
+    <button class="filter @(filter is null ? "on" : "")" @onclick="() => filter = null">Alla</button>
+    @foreach (var c in Enum.GetValues<FoodCategory>())
+    {
+        var cat = c;
+        <button class="filter @(filter == cat ? "on" : "")" @onclick="() => filter = cat">
+            @ToSwedish(cat)
+        </button>
+    }
 </div>
 
 <div class="food-list">
-    @foreach (var f in foods)
+    @foreach (var f in Filtered)
     {
         <div class="food-row">
             <div>
                 <div class="food-name">@f.Name</div>
                 <div class="food-tags">
                     @f.CaloriesPer100g kcal/100 g
+                    <span class="tag">@ToSwedish(f.Category)</span>
                     @if (f.Vegan)
                     {
                         <span class="tag">vegansk</span>
@@ -68,13 +54,54 @@
     }
 </div>
 
+<div class="add-card">
+    <h2 class="add-title">Ny råvara</h2>
+
+    <label class="field">
+        <span>Namn</span>
+        <input @bind="name" placeholder="t.ex. Kardemummabulle" />
+    </label>
+
+    <label class="field">
+        <span>Kalorier per 100 g</span>
+        <input type="number" min="0" @bind="kcal" />
+    </label>
+
+    <label class="field">
+        <span>Kategori</span>
+        <select @bind="category">
+            @foreach (var c in Enum.GetValues<FoodCategory>())
+            {
+                <option value="@c">@ToSwedish(c)</option>
+            }
+        </select>
+    </label>
+
+    <div class="chips">
+        <label class="chip"><input type="checkbox" @bind="vegan" /> Vegansk</label>
+        <label class="chip"><input type="checkbox" @bind="lactose" /> Laktos</label>
+        <label class="chip"><input type="checkbox" @bind="gluten" /> Gluten</label>
+        <label class="chip"><input type="checkbox" @bind="nuts" /> Nötter</label>
+        <label class="chip"><input type="checkbox" @bind="milkPowder" /> Mjölkpulver</label>
+    </div>
+
+    <button class="btn-primary" @onclick="Add" disabled="@string.IsNullOrWhiteSpace(name)">
+        Spara råvara
+    </button>
+</div>
+
 @code {
     private List<FoodItem> foods = new();
+    private FoodCategory? filter;
     private string? errorMessage;
 
     private string name = "";
     private int kcal;
+    private FoodCategory category = FoodCategory.Other;
     private bool vegan, lactose, gluten, nuts, milkPowder;
+
+    private IEnumerable<FoodItem> Filtered =>
+        filter is null ? foods : foods.Where(f => f.Category == filter);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -86,6 +113,7 @@
         {
             Name = name.Trim(),
             CaloriesPer100g = kcal,
+            Category = category,
             Vegan = vegan,
             Lactose = lactose,
             Gluten = gluten,
@@ -93,7 +121,7 @@
             MilkPowder = milkPowder
         });
 
-        name = ""; kcal = 0;
+        name = ""; kcal = 0; category = FoodCategory.Other;
         vegan = lactose = gluten = nuts = milkPowder = false;
         errorMessage = null;
         await LoadAsync();
@@ -112,4 +140,17 @@
             errorMessage = ex.Message;
         }
     }
+
+    private static string ToSwedish(FoodCategory c) => c switch
+    {
+        FoodCategory.Grain => "Spannmål",
+        FoodCategory.Dairy => "Mejeri",
+        FoodCategory.Protein => "Protein",
+        FoodCategory.Vegetable => "Grönt",
+        FoodCategory.Fruit => "Frukt",
+        FoodCategory.Fat => "Fett",
+        FoodCategory.Treat => "Fika",
+        FoodCategory.Drink => "Dryck",
+        _ => "Övrigt"
+    };
 }

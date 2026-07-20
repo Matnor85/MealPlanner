@@ -449,3 +449,35 @@ html, body {
 .tab-label {
     display: block;
 }
+
+.filter-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+    .filter-row::-webkit-scrollbar {
+        display: none;
+    }
+
+.filter {
+    flex: 0 0 auto;
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+    .filter.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+    }

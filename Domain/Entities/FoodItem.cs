@@ -8,6 +8,7 @@ public record FoodItem
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public string Name { get; init; } = string.Empty;
+    public FoodCategory Category { get; init; } = FoodCategory.Other;
     public int CaloriesPer100g { get; init; }
 
     // Allergens and dietary restrictions
