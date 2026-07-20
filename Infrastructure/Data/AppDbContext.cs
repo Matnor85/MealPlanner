@@ -7,8 +7,11 @@ public class AppDbContext : DbContext
 {
     public DbSet<FoodItem> FoodItems { get; set; }
     public DbSet<WeeklyPlan> WeeklyPlans { get; set; }
-    public DbSet<MonthlyPlan> MonthlyPlans { get; set; }
     public DbSet<Fika> Fikas { get; set; }
+    public DbSet<Recipe> Recipes { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<WeighIn> WeighIns { get; set; }
+    public DbSet<ShoppingItemState> ShoppingItems { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {

@@ -17,12 +17,38 @@ public class Meal
 
     public int WeightInGrams { get; set; }
 
-    public int CalculatedCalories =>
-        Food is null ? 0 : (int)Math.Round((double)Food.CaloriesPer100g * WeightInGrams / 100);
+    // Antingen FoodId ELLER RecipeId är satt - aldrig båda
+    public Guid? RecipeId { get; set; }
+    public Recipe? Recipe { get; set; }
 
-    public bool ContainsLactose => Food?.Lactose ?? false;
-    public bool ContainsGluten => Food?.Gluten ?? false;
-    public bool IsVegan => Food?.Vegan ?? false;
-    public bool ContainsMilkPowder => Food?.MilkPowder ?? false;
-    public bool ContainsNuts => Food?.Nuts ?? false;
+    // Antal portioner när måltiden är ett recept
+    public double Portions { get; set; } = 1;
+
+    public int CalculatedCalories
+    {
+        get
+        {
+            if (Recipe is not null)
+                return (int)Math.Round(Recipe.CaloriesPerPortion * Portions);
+            if (Food is not null)
+                return (int)Math.Round((double)Food.CaloriesPer100g * WeightInGrams / 100);
+            return 0;
+        }
+    }
+
+    public bool ContainsLactose => Recipe is not null
+        ? Recipe.Ingredients.Any(i => i.Food?.Lactose ?? false)
+        : Food?.Lactose ?? false;
+    public bool ContainsGluten => Recipe is not null
+        ? Recipe.Ingredients.Any(i => i.Food?.Gluten ?? false)
+        : Food?.Gluten ?? false;
+    public bool IsVegan => Recipe is not null
+        ? Recipe.Ingredients.All(i => i.Food?.Vegan ?? false)
+        : Food?.Vegan ?? false;
+    public bool ContainsMilkPowder => Recipe is not null
+        ? Recipe.Ingredients.Any(i => i.Food?.MilkPowder ?? false)
+        : Food?.MilkPowder ?? false;
+    public bool ContainsNuts => Recipe is not null
+        ? Recipe.Ingredients.Any(i => i.Food?.Nuts ?? false)
+        : Food?.Nuts ?? false;
 }
