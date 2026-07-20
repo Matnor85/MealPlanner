@@ -1,11 +1,17 @@
-﻿using Domain.Entities;
+﻿namespace Domain.Entities;
 
 public class Meal
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    // Främmande nyckel till dagen måltiden tillhör
+    public Guid DailyPlanId { get; set; }
+
+    // Standard är mellanmål om inget väljs
     public MealType Type { get; set; } = MealType.Snack;
 
-    // Främmande nyckel — pekar ut vilken råvara måltiden använder
+    // Främmande nyckel till råvaran. Nullable = måltiden kan finnas
+    // innan användaren hunnit välja vad som ska ätas.
     public Guid? FoodId { get; set; }
     public FoodItem? Food { get; set; }
 

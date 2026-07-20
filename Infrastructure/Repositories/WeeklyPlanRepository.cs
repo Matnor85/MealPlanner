@@ -5,55 +5,65 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories;
 
-// Denna klass implementerar interfacet från vår innersta Domain-kärna
 public class WeeklyPlanRepository : IWeeklyPlanRepository
 {
-    private readonly AppDbContext _context;
+    private readonly IDbContextFactory<AppDbContext> _factory;
 
-    // Vi injicerar vår databaskontext via konstruktorn
-    public WeeklyPlanRepository(AppDbContext context)
+    public WeeklyPlanRepository(IDbContextFactory<AppDbContext> factory)
     {
-        _context = context;
+        _factory = factory;
     }
 
     public async Task<WeeklyPlan?> GetWeekAsync(int year, int weekNumber)
     {
-        // VIKTIGT: EF Core laddar inte relaterad data automatiskt av prestandaskäl (Lazy Loading).
-        // Eftersom WeeklyPlan innehåller Days, som innehåller Meals, som innehåller Food,
-        // måste vi berätta för databasen att vi vill hämta ("Include") hela trädet på en gång!
-        return await _context.WeeklyPlans
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var week = await context.WeeklyPlans
             .Include(w => w.Days)
                 .ThenInclude(d => d.Meals)
                     .ThenInclude(m => m.Food)
-            // OBS: Kolla så att du faktiskt har 'public int Month { get; set; }' i din WeeklyPlan.cs-entitet,
-            // annars kan du ta bort 'w.Month == month' här nedanför.
             .FirstOrDefaultAsync(w => w.Year == year && w.WeekNumber == weekNumber);
+
+        // Databasen lovar ingen ordning på barnlistor - sortera själv
+        if (week is not null)
+            week.Days = week.Days.OrderBy(d => d.SortOrder).ToList();
+
+        return week;
     }
 
     public async Task SaveWeekAsync(WeeklyPlan weeklyPlan)
     {
-        // Kolla om veckan redan existerar i databasen
-        var existingWeek = await _context.WeeklyPlans.AsNoTracking().FirstOrDefaultAsync(w => w.Id == weeklyPlan.Id);
+        await using var context = await _factory.CreateDbContextAsync();
 
-        if (existingWeek == null)
+        // Matcha på år + veckonummer, inte på Id. Annars skapas dubbletter
+        // när en ny WeeklyPlan-instans får ett färskt Guid.
+        var existingId = await context.WeeklyPlans
+            .AsNoTracking()
+            .Where(w => w.Year == weeklyPlan.Year && w.WeekNumber == weeklyPlan.WeekNumber)
+            .Select(w => (Guid?)w.Id)
+            .FirstOrDefaultAsync();
+
+        if (existingId is null)
         {
-            // Om den inte finns, lägg till den som ny
-            await _context.WeeklyPlans.AddAsync(weeklyPlan);
+            context.WeeklyPlans.Add(weeklyPlan);
         }
         else
         {
-            // Om den redan finns, uppdatera den
-            _context.WeeklyPlans.Update(weeklyPlan);
+            weeklyPlan.Id = existingId.Value;
+            context.WeeklyPlans.Update(weeklyPlan);
         }
 
-        // Utför själva sparandet i SQLite-filen
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<WeeklyPlan>> GetAllWeeksAsync()
     {
-        return await _context.WeeklyPlans
+        await using var context = await _factory.CreateDbContextAsync();
+
+        return await context.WeeklyPlans
             .Include(w => w.Days)
+            .OrderBy(w => w.Year)
+            .ThenBy(w => w.WeekNumber)
             .ToListAsync();
     }
 }

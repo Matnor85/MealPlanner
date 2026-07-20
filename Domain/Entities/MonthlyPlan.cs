@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Domain.Entities;
+﻿namespace Domain.Entities;
 
 public class MonthlyPlan
 {
@@ -10,8 +6,6 @@ public class MonthlyPlan
     public int Month { get; set; }
     public int Year { get; set; }
 
-    public List<WeeklyPlan> Weeks { get; set; } = new();
-
-    // Summary property to calculate total monthly calories
-    public int TotalMonthlyCalories => Weeks.Sum(w => w.TotalWeeklyCalories);
+    // Kopplingen till veckor är medvetet borttagen. En månadssammanställning
+    // räknas i stället fram från veckorna när den behövs.
 }

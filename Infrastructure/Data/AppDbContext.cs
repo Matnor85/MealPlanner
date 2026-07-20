@@ -3,37 +3,51 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Data;
 
-// Denna klass representerar själva databasen och ärver från EF Cores DbContext
 public class AppDbContext : DbContext
 {
-    // DbSet representerar tabellerna i din SQLite-databas.
-    // Vi lägger bara till våra "Aggregate Roots" här. EF Core är smart nog 
-    // att förstå att WeeklyPlan innehåller DailyPlan och Meal, och skapar 
-    // de tabellerna automatiskt i bakgrunden!
-
     public DbSet<FoodItem> FoodItems { get; set; }
     public DbSet<WeeklyPlan> WeeklyPlans { get; set; }
     public DbSet<MonthlyPlan> MonthlyPlans { get; set; }
+    public DbSet<Fika> Fikas { get; set; }
 
-    // Om du vill ha en separat tabell för dina Fika-stunder!
-    public DbSet<Fika> Fika { get; set; }
-
-    // Konstruktor som tar emot inställningar (t.ex. sökvägen till SQLite-filen på telefonen)
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 
-    // Här kan man detaljstyra hur databasen skapas (kallas Fluent API)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Exempel: Berätta för databasen att en FoodItem's Name är obligatorisk (inte null)
         modelBuilder.Entity<FoodItem>()
             .Property(f => f.Name)
             .IsRequired();
 
-        // Här kan vi senare lägga in standard-matvaror (Havregryn, Ägg etc) 
-        // så att databasen inte är helt tom första gången appen startas!
+        // Ett år + veckonummer får bara finnas en gång
+        modelBuilder.Entity<WeeklyPlan>()
+            .HasIndex(w => new { w.Year, w.WeekNumber })
+            .IsUnique();
+
+        // En dag måste tillhöra en vecka. Raderas veckan följer dagarna med.
+        modelBuilder.Entity<WeeklyPlan>()
+            .HasMany(w => w.Days)
+            .WithOne()
+            .HasForeignKey(d => d.WeeklyPlanId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // En måltid måste tillhöra en dag. Raderas dagen följer måltiderna med.
+        modelBuilder.Entity<DailyPlan>()
+            .HasMany(d => d.Meals)
+            .WithOne()
+            .HasForeignKey(m => m.DailyPlanId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Råvaran däremot ska ALDRIG raderas bara för att en måltid försvinner.
+        modelBuilder.Entity<Meal>()
+            .HasOne(m => m.Food)
+            .WithMany()
+            .HasForeignKey(m => m.FoodId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
