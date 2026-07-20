@@ -1,5 +1,4 @@
 ﻿using Infrastructure.Data;
-using MealPlanner.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 // Här skapar vi en tillfällig kontext så att EF Core kan bygga databasen
