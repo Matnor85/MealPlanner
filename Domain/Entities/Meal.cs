@@ -42,6 +42,8 @@ public class Meal
     {
         get
         {
+            GuardLoaded();
+
             if (Recipe is not null)
                 return (int)Math.Round(Recipe.CaloriesPerPortion * Portions);
 
@@ -63,45 +65,43 @@ public class Meal
     {
         get
         {
+            GuardLoaded();
+
             if (Recipe is not null)
             {
-                GuardRecipeLoaded();
-
                 // All() på en tom lista ger true - ett tomt recept är inte veganskt
                 if (Recipe.Ingredients.Count == 0) return false;
 
                 return Recipe.Ingredients.All(i => i.Food!.Vegan);
             }
 
-            GuardFoodLoaded();
             return Food?.Vegan ?? false;
         }
     }
 
-    // Svarar aldrig "nej" på en allergifråga när underlaget saknas.
-    // Ett undantag under utveckling är bättre än ett tyst felaktigt svar.
     private bool AnyIngredient(Func<FoodItem, bool> predicate)
     {
-        if (Recipe is not null)
-        {
-            GuardRecipeLoaded();
-            return Recipe.Ingredients.Any(i => predicate(i.Food!));
-        }
+        GuardLoaded();
 
-        GuardFoodLoaded();
+        if (Recipe is not null)
+            return Recipe.Ingredients.Any(i => predicate(i.Food!));
+
         return Food is not null && predicate(Food);
     }
 
-    private void GuardRecipeLoaded()
+    // En enda vakt för allt. Måltiden svarar hellre med undantag än med fel siffra
+    // eller ett tyst "nej" på en allergifråga.
+    private void GuardLoaded()
     {
-        if (Recipe!.Ingredients.Any(i => i.Food is null))
+        if (RecipeId.HasValue && Recipe is null)
+            throw new InvalidOperationException(
+                "Måltidens recept är inte laddat. Kontrollera att queryn har Include på Meal.Recipe.");
+
+        if (Recipe is not null && Recipe.Ingredients.Any(i => i.Food is null))
             throw new InvalidOperationException(
                 $"Receptet '{Recipe.Name}' har ingredienser utan laddad råvara. " +
                 "Kontrollera att queryn har Include på RecipeIngredient.Food.");
-    }
 
-    private void GuardFoodLoaded()
-    {
         if (FoodId.HasValue && Food is null)
             throw new InvalidOperationException(
                 "Måltidens råvara är inte laddad. Kontrollera att queryn har Include på Meal.Food.");

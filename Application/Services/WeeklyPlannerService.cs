@@ -38,7 +38,6 @@ public class WeeklyPlannerService
             });
         }
 
-        // Detta saknades tidigare - utan det försvann veckan vid varje omstart
         await _repository.SaveWeekAsync(newWeek);
 
         return newWeek;
@@ -70,12 +69,17 @@ public class WeeklyPlannerService
 
             foreach (var sourceMeal in sourceDay.Meals)
             {
+                // Kopiera BÅDA varianterna. Utelämnas RecipeId blir en receptmåltid
+                // en måltid utan vare sig råvara eller recept, och databasens
+                // check constraint stoppar hela sparningen.
                 newDay.Meals.Add(new Meal
                 {
                     DailyPlanId = newDay.Id,
                     Type = sourceMeal.Type,
-                    FoodId = sourceMeal.FoodId,   // bara nyckeln, inte objektet
-                    WeightInGrams = sourceMeal.WeightInGrams
+                    FoodId = sourceMeal.FoodId,
+                    WeightInGrams = sourceMeal.WeightInGrams,
+                    RecipeId = sourceMeal.RecipeId,
+                    Portions = sourceMeal.Portions
                 });
             }
 
@@ -108,13 +112,37 @@ public class WeeklyPlannerService
         if (grams <= 0)
             throw new ArgumentException("Vikten måste vara större än noll.", nameof(grams));
 
-        await _repository.AddMealAsync(new Meal
+        var meal = new Meal
         {
             DailyPlanId = dailyPlanId,
             Type = type,
             FoodId = foodId,
             WeightInGrams = grams
-        });
+        };
+
+        if (!meal.IsValid)
+            throw new InvalidOperationException("En måltid måste ha antingen en råvara eller ett recept.");
+
+        await _repository.AddMealAsync(meal);
+    }
+
+    public async Task AddRecipeMealAsync(Guid dailyPlanId, MealType type, Guid recipeId, double portions)
+    {
+        if (portions <= 0)
+            throw new ArgumentException("Antalet portioner måste vara större än noll.", nameof(portions));
+
+        var meal = new Meal
+        {
+            DailyPlanId = dailyPlanId,
+            Type = type,
+            RecipeId = recipeId,
+            Portions = portions
+        };
+
+        if (!meal.IsValid)
+            throw new InvalidOperationException("En måltid måste ha antingen en råvara eller ett recept.");
+
+        await _repository.AddMealAsync(meal);
     }
 
     public Task RemoveMealAsync(Guid mealId) => _repository.RemoveMealAsync(mealId);

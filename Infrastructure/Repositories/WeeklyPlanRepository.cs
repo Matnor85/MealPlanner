@@ -22,6 +22,11 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
             .Include(w => w.Days)
                 .ThenInclude(d => d.Meals)
                     .ThenInclude(m => m.Food)
+            .Include(w => w.Days)
+                .ThenInclude(d => d.Meals)
+                    .ThenInclude(m => m.Recipe!)
+                        .ThenInclude(r => r.Ingredients)
+                            .ThenInclude(i => i.Food)
             .FirstOrDefaultAsync(w => w.Year == year && w.WeekNumber == weekNumber);
 
         // Databasen lovar ingen ordning på barnlistor - sortera själv
@@ -35,24 +40,23 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
     {
         await using var context = await _factory.CreateDbContextAsync();
 
-        // Matcha på år + veckonummer, inte på Id. Annars skapas dubbletter
-        // när en ny WeeklyPlan-instans får ett färskt Guid.
-        var existingId = await context.WeeklyPlans
-            .AsNoTracking()
-            .Where(w => w.Year == weeklyPlan.Year && w.WeekNumber == weeklyPlan.WeekNumber)
-            .Select(w => (Guid?)w.Id)
-            .FirstOrDefaultAsync();
+        var existing = await context.WeeklyPlans
+            .Include(w => w.Days)
+                .ThenInclude(d => d.Meals)
+            .FirstOrDefaultAsync(w => w.Year == weeklyPlan.Year
+                                   && w.WeekNumber == weeklyPlan.WeekNumber);
 
-        if (existingId is null)
+        if (existing is not null)
         {
-            context.WeeklyPlans.Add(weeklyPlan);
-        }
-        else
-        {
-            weeklyPlan.Id = existingId.Value;
-            context.WeeklyPlans.Update(weeklyPlan);
+            // Ta bort den gamla veckan helt - kaskaden städar dagar och måltider.
+            // Enklare och säkrare än att diffa två objektträd med Update(),
+            // som markerar även nya barn som Modified och kastar
+            // DbUpdateConcurrencyException när raderna inte finns.
+            context.WeeklyPlans.Remove(existing);
+            await context.SaveChangesAsync();
         }
 
+        context.WeeklyPlans.Add(weeklyPlan);
         await context.SaveChangesAsync();
     }
 
@@ -62,6 +66,13 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
 
         return await context.WeeklyPlans
             .Include(w => w.Days)
+                .ThenInclude(d => d.Meals)
+                    .ThenInclude(m => m.Food)
+            .Include(w => w.Days)
+                .ThenInclude(d => d.Meals)
+                    .ThenInclude(m => m.Recipe!)
+                        .ThenInclude(r => r.Ingredients)
+                            .ThenInclude(i => i.Food)
             .OrderBy(w => w.Year)
             .ThenBy(w => w.WeekNumber)
             .ToListAsync();
