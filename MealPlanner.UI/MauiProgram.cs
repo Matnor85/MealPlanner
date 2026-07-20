@@ -40,12 +40,26 @@ public static class MauiProgram
 
         var app = builder.Build();
 
-        // Skapa databasen en gång vid start, inte vid varje sidladdning
+        //// Skapa databasen en gång vid start, inte vid varje sidladdning
+        //using (var scope = app.Services.CreateScope())
+        //{
+        //    var factory = scope.ServiceProvider
+        //        .GetRequiredService<IDbContextFactory<AppDbContext>>();
+        //    using var context = factory.CreateDbContext();
+        //    context.Database.EnsureCreated();
+        //}
         using (var scope = app.Services.CreateScope())
         {
             var factory = scope.ServiceProvider
                 .GetRequiredService<IDbContextFactory<AppDbContext>>();
             using var context = factory.CreateDbContext();
+
+#if DEBUG
+            // Bygger om databasen från noll vid varje start under utveckling.
+            // TA BORT denna rad så fort du har data du vill behålla!
+            context.Database.EnsureDeleted();
+#endif
+
             context.Database.EnsureCreated();
         }
 

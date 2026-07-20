@@ -427,3 +427,25 @@ html, body {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+.stub {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+}
+
+.stub-link {
+    display: inline-block;
+    margin-top: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 550;
+}
+
+.tab-label {
+    display: block;
+}
