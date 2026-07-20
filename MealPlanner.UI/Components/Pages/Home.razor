@@ -1,0 +1,71 @@
+﻿@page "/"
+@using Application.Services
+@using Domain.Entities
+@using Infrastructure
+@using Infrastructure.Data
+
+@*Här injicerar vi våra tjänster från MAUI program*@
+@inject WeeklyPlannerService PlannerService
+@inject AppDbContext DbContext
+
+<div class="container text-center mt-4">
+    <h1>Welcome to Meal Planner!</h1>
+
+    @if (isLoading)
+    {
+        <p><em>Laddar schema... (och sparar lokalt)</em></p>
+    }
+    else if (currentWeek != null)
+    {
+        <div class="card mt-4 shadow">
+            <div class="card-body">
+                <h2>Vecka @currentWeek.WeekNumber, @currentWeek.Year</h2>
+                <p class="text-muted">Totalt: @currentWeek.TotalWeeklyCalories kcal</p>
+    
+                <button class="btn btn-primary mt-2" @onclick="GoToNextWeek">
+                    Kopiera till nästa vecka
+                </button>
+            </div>
+        </div>
+    
+        <div class="mt-4">
+            @foreach (var day in currentWeek.Days)
+            {
+                <div class="card mb-2">
+                    <div class="card-body d-flex justify-content-between">
+                        <strong>@day.Day</strong>
+                        <span>@day.TotalCalories kcal</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private WeeklyPlan? currentWeek;
+    private bool isLoading = true;
+
+    // Denna metod körs automatiskt när sidan laddas
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Magi! Om databasfilen inte finns på telefonen, skapar EF Core den nu med alla tabeller.
+        await DbContext.Database.EnsureCreatedAsync();
+
+        // 2. Vi testar att hämta (eller skapa) aktuell vecka (t.ex. vecka 32, 2026)
+        currentWeek = await PlannerService.GetOrCreateWeekAsync(2026, 32);
+
+        isLoading = false;
+    }
+
+    private async Task GoToNextWeek()
+    {
+        if (currentWeek != null)
+        {
+            isLoading = true;
+            // Här anropar vi metoden vi skrev i Application-lagret!
+            currentWeek = await PlannerService.CopyWeekToNextAsync(currentWeek.Year, currentWeek.WeekNumber);
+            isLoading = false;
+        }
+    }
+}

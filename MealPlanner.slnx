@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Övrigt.txt" />
+  </Folder>
+  <Project Path="Application/Application.csproj" />
+  <Project Path="Domain/Domain.csproj" />
+  <Project Path="Infrastructure/Infrastructure.csproj" />
+  <Project Path="MealPlanner.Migrator/MealPlanner.Migrator.csproj" Id="36c7acf2-e3ad-4265-9930-71c5d0c75120" />
+  <Project Path="MealPlanner.UI/MealPlanner.UI.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+</Solution>

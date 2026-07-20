@@ -1,0 +1,4 @@
+Enums/
+
+    Fasta listor av värden (t.ex. DayOfWeek är redan inbyggt i C#, men du kanske vill ha en MealType enum med frukost, lunch, middag).
+

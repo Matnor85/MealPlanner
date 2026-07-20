@@ -1,0 +1,16 @@
+﻿using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
+
+namespace MealPlanner.Infrastructure.Data;
+
+public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        // Vi pekar på en temporär fil bara för att generera migrationen
+        optionsBuilder.UseSqlite("Data Source=design-time.db");
+        return new AppDbContext(optionsBuilder.Options);
+    }
+}
