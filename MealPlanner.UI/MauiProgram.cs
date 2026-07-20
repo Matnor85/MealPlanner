@@ -36,7 +36,10 @@ public static class MauiProgram
 
         builder.Services.AddScoped<IWeeklyPlanRepository, WeeklyPlanRepository>();
         builder.Services.AddScoped<IFoodItemRepository, FoodItemRepository>();
+        builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
+        builder.Services.AddScoped<IShoppingRepository, ShoppingRepository>();
         builder.Services.AddScoped<WeeklyPlannerService>();
+        builder.Services.AddScoped<ShoppingListService>();
 
         var app = builder.Build();
 

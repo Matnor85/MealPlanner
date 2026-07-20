@@ -1,0 +1,110 @@
+@page "/cook/{Id:guid}"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IRecipeRepository RecipeRepo
+@inject NavigationManager Nav
+
+@if (recipe is null)
+{
+    <p class="muted">Laddar...</p>
+}
+else
+{
+    <button class="back-link" @onclick='() => Nav.NavigateTo($"/recipe/{Id}")'>‹ Tillbaka</button>
+
+    <section class="cook-head">
+        <h1 class="day-title">@recipe.Name</h1>
+        <div class="cook-meta">
+            @recipe.TotalMinutes min · @recipe.CaloriesPerPortion kcal/port.
+        </div>
+    </section>
+
+    <div class="progress-wrap">
+        <div class="progress-bar" style="width:@(Percent)%"></div>
+    </div>
+    <div class="progress-text">
+        @done.Count av @recipe.Steps.Count moment klara
+        @if (done.Count > 0)
+        {
+            <button class="link-btn" @onclick="Reset">Börja om</button>
+        }
+    </div>
+
+    <div class="add-card">
+        <label class="field">
+            <span>Antal portioner</span>
+            <input type="number" min="1" step="1" @bind="portions" @bind:event="oninput" />
+        </label>
+
+        <div class="ing-head">Ingredienser</div>
+        @foreach (var ing in recipe.Ingredients)
+        {
+            <div class="ing-row">
+                <span>@(ing.Food?.Name ?? "Okänd")</span>
+                <span class="ing-amount">@Scaled(ing.WeightInGrams) g</span>
+            </div>
+        }
+    </div>
+
+    <div class="steps">
+        @foreach (var step in recipe.Steps)
+        {
+            var isDone = done.Contains(step.Id);
+            var isCurrent = !isDone && step.Id == FirstUndoneId;
+
+            <div class="step @(isDone ? "done" : "") @(isCurrent ? "current" : "")"
+                 @onclick="() => Toggle(step.Id)">
+                <div class="step-num">@(isDone ? "✓" : step.StepNumber.ToString())</div>
+                <div class="step-body">
+                    <p class="step-text">@step.Text</p>
+                    @if (step.Minutes is int m)
+                    {
+                        <span class="step-time">~@m min</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (done.Count == recipe.Steps.Count && recipe.Steps.Count > 0)
+    {
+        <div class="done-banner">Klart! Smaklig måltid.</div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Recipe? recipe;
+    private readonly HashSet<Guid> done = new();
+    private int portions = 4;
+
+    // Avbockningarna lever bara under sessionen. Sparas de i databasen
+    // ligger de kvar som "klara" nästa gång du lagar samma rätt.
+    private Guid? FirstUndoneId =>
+        recipe?.Steps.FirstOrDefault(s => !done.Contains(s.Id))?.Id;
+
+    private int Percent => recipe is null || recipe.Steps.Count == 0
+        ? 0
+        : (int)Math.Round(100.0 * done.Count / recipe.Steps.Count);
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipe = await RecipeRepo.GetByIdAsync(Id);
+        if (recipe is not null) portions = recipe.Portions;
+    }
+
+    private int Scaled(int grams)
+    {
+        if (recipe is null || recipe.Portions <= 0) return grams;
+        return (int)Math.Round((double)grams / recipe.Portions * Math.Max(1, portions));
+    }
+
+    private void Toggle(Guid stepId)
+    {
+        if (!done.Remove(stepId)) done.Add(stepId);
+    }
+
+    private void Reset() => done.Clear();
+}

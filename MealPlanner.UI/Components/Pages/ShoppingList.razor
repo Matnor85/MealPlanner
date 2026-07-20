@@ -1,7 +1,109 @@
 @page "/shopping"
+@using System.Globalization
+@using Application.Services
+@using Domain.Entities
+
+@inject ShoppingListService Shopping
 
 <h1 class="page-title">Inköpslista</h1>
 
-<div class="stub">
-    <p>Listan räknas fram automatiskt från veckans måltider.</p>
+<div class="week-nav compact">
+    <button class="icon-btn" @onclick="() => Shift(-1)">‹</button>
+    <span>Vecka @week, @year</span>
+    <button class="icon-btn" @onclick="() => Shift(1)">›</button>
 </div>
+
+@if (isLoading)
+{
+    <p class="muted">Laddar...</p>
+}
+else if (lines.Count == 0)
+{
+    <div class="stub">Inga måltider planerade för den här veckan.</div>
+}
+else
+{
+    <p class="muted shop-summary">
+        @lines.Count(l => l.IsChecked) av @lines.Count avbockade
+    </p>
+
+    @foreach (var group in lines.GroupBy(l => l.Food.Category))
+    {
+        <div class="meal-group">
+            <div class="meal-group-head"><span>@ToSwedish(group.Key)</span></div>
+            @foreach (var line in group)
+            {
+                <label class="shop-row @(line.IsChecked ? "done" : "")">
+                    <input type="checkbox"
+                           checked="@line.IsChecked"
+                           @onchange="e => Toggle(line, (bool)e.Value!)" />
+                    <span class="shop-name">@line.Food.Name</span>
+                    <span class="shop-amount">@line.TotalGrams g</span>
+                </label>
+            }
+        </div>
+    }
+
+    <button class="btn-secondary" @onclick="Clear">Nollställ avbockningar</button>
+}
+
+@code {
+    private List<ShoppingLine> lines = new();
+    private bool isLoading = true;
+    private int year, week;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var today = DateTime.Today;
+        year = ISOWeek.GetYear(today);
+        week = ISOWeek.GetWeekOfYear(today);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        lines = await Shopping.BuildAsync(year, week);
+        isLoading = false;
+    }
+
+    private async Task Shift(int delta)
+    {
+        if (delta > 0)
+        {
+            if (week >= ISOWeek.GetWeeksInYear(year)) { week = 1; year++; }
+            else week++;
+        }
+        else
+        {
+            if (week <= 1) { year--; week = ISOWeek.GetWeeksInYear(year); }
+            else week--;
+        }
+        await LoadAsync();
+    }
+
+    private async Task Toggle(ShoppingLine line, bool isChecked)
+    {
+        await Shopping.SetCheckedAsync(year, week, line.Food.Id, isChecked);
+        await LoadAsync();
+    }
+
+    private async Task Clear()
+    {
+        await Shopping.ClearChecksAsync(year, week);
+        await LoadAsync();
+    }
+
+    private static string ToSwedish(FoodCategory c) => c switch
+    {
+        FoodCategory.Grain => "Spannmål",
+        FoodCategory.Dairy => "Mejeri",
+        FoodCategory.Protein => "Protein",
+        FoodCategory.Vegetable => "Grönt",
+        FoodCategory.Fruit => "Frukt",
+        FoodCategory.Fat => "Fett",
+        FoodCategory.Treat => "Fika",
+        FoodCategory.Drink => "Dryck",
+        _ => "Övrigt"
+    };
+}

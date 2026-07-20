@@ -481,3 +481,254 @@ html, body {
         border-color: var(--accent);
         color: #fff;
     }
+
+.segmented {
+    display: flex;
+    gap: 0;
+    margin-bottom: 14px;
+}
+
+.seg {
+    flex: 1;
+    padding: 9px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 0.87rem;
+    cursor: pointer;
+}
+
+    .seg:first-child {
+        border-radius: 9px 0 0 9px;
+    }
+
+    .seg:last-child {
+        border-radius: 0 9px 9px 0;
+        border-left: none;
+    }
+
+    .seg.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+    }
+
+.week-nav.compact {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-weight: 550;
+}
+
+.shop-summary {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+}
+
+.shop-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-top: 1px solid var(--line);
+    cursor: pointer;
+}
+
+    .shop-row input {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--accent);
+    }
+
+.shop-name {
+    flex: 1;
+}
+
+.shop-amount {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-row.done .shop-name {
+    text-decoration: line-through;
+    color: var(--ink-soft);
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 12px;
+    margin-top: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn-danger {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--danger);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.cook-head {
+    margin-bottom: 14px;
+}
+
+.cook-meta {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
+.progress-wrap {
+    height: 6px;
+    background: var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.25s ease;
+}
+
+.progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin-bottom: 16px;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+.ing-head {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    margin: 6px 0 8px;
+}
+
+.ing-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+    font-size: 0.9rem;
+}
+
+.ing-amount {
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.step {
+    display: flex;
+    gap: 13px;
+    padding: 15px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+    .step.current {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .step.done {
+        opacity: 0.45;
+    }
+
+        .step.done .step-text {
+            text-decoration: line-through;
+        }
+
+.step-num {
+    flex: 0 0 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.step.done .step-num {
+    background: var(--accent);
+    color: #fff;
+}
+
+.step-body {
+    flex: 1;
+}
+
+.step-text {
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.5;
+}
+
+.step-time {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.step-inline-num {
+    font-weight: 600;
+    color: var(--accent);
+    margin-right: 4px;
+}
+
+.done-banner {
+    margin-top: 18px;
+    padding: 16px;
+    text-align: center;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: var(--radius);
+    font-weight: 550;
+}

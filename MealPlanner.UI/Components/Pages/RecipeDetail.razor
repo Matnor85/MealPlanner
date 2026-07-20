@@ -1,0 +1,145 @@
+@page "/recipe/{Id:guid}"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IRecipeRepository RecipeRepo
+@inject IFoodItemRepository FoodRepo
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick='() => Nav.NavigateTo("/recipes")'>‹ Recept</button>
+
+@if (recipe is null)
+{
+    <p class="muted">Laddar...</p>
+}
+else
+{
+    <section class="day-header">
+        <h1 class="day-title">@recipe.Name</h1>
+        <div class="day-total">@recipe.CaloriesPerPortion <span class="unit">kcal/port.</span></div>
+    </section>
+    <button class="btn-primary" @onclick='() => Nav.NavigateTo($"/cook/{Id}")'>
+        Laga den här rätten
+    </button>
+    @if (errorMessage is not null)
+    {
+        <div class="banner-error">@errorMessage</div>
+    }
+
+    <div class="add-card">
+        <h2 class="add-title">Lägg till ingrediens</h2>
+
+        <label class="field">
+            <span>Råvara</span>
+            <select @bind="newFoodId">
+                <option value="">Välj...</option>
+                @foreach (var f in foods)
+                {
+                    <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
+                }
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Mängd i gram (för hela receptet)</span>
+            <input type="number" min="1" @bind="newGrams" />
+        </label>
+
+        <button class="btn-primary" @onclick="AddIngredient" disabled="@string.IsNullOrEmpty(newFoodId)">
+            Lägg till
+        </button>
+    </div>
+
+    <div class="meal-group">
+        <div class="meal-group-head">
+            <span>Ingredienser</span>
+            <span>@recipe.TotalCalories kcal totalt</span>
+        </div>
+        @if (recipe.Ingredients.Count == 0)
+        {
+            <div class="meal-row"><span class="muted">Inga ingredienser än.</span></div>
+        }
+        @foreach (var ing in recipe.Ingredients)
+        {
+            <div class="meal-row">
+                <div>
+                    <div class="meal-name">@(ing.Food?.Name ?? "Okänd")</div>
+                    <div class="meal-sub">@ing.WeightInGrams g</div>
+                </div>
+                <div class="meal-right">
+                    <span class="meal-kcal">@ing.CalculatedCalories</span>
+                    <button class="del-btn" @onclick="() => RemoveIngredient(ing.Id)" aria-label="Ta bort">×</button>
+                </div>
+            </div>
+        }
+    </div>
+    @if (recipe.Steps.Count > 0)
+    {
+        <div class="meal-group">
+            <div class="meal-group-head">
+                <span>Gör så här</span>
+                <span>@recipe.TotalMinutes min</span>
+            </div>
+            @foreach (var s in recipe.Steps.OrderBy(s => s.StepNumber))
+            {
+                <div class="meal-row">
+                    <div><span class="step-inline-num">@s.StepNumber.</span> @s.Text</div>
+                </div>
+            }
+        </div>
+    }
+    <button class="btn-danger" @onclick="DeleteRecipe">Radera receptet</button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Recipe? recipe;
+    private List<FoodItem> foods = new();
+    private string? errorMessage;
+
+    private string newFoodId = "";
+    private int newGrams = 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        foods = (await FoodRepo.GetAllAsync()).ToList();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => recipe = await RecipeRepo.GetByIdAsync(Id);
+
+    private async Task AddIngredient()
+    {
+        if (!Guid.TryParse(newFoodId, out var foodId)) return;
+
+        await RecipeRepo.AddIngredientAsync(new RecipeIngredient
+        {
+            RecipeId = Id,
+            FoodId = foodId,
+            WeightInGrams = newGrams
+        });
+
+        newFoodId = ""; newGrams = 100;
+        await LoadAsync();
+    }
+
+    private async Task RemoveIngredient(Guid ingredientId)
+    {
+        await RecipeRepo.RemoveIngredientAsync(ingredientId);
+        await LoadAsync();
+    }
+
+    private async Task DeleteRecipe()
+    {
+        try
+        {
+            await RecipeRepo.DeleteAsync(Id);
+            Nav.NavigateTo("/recipes");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

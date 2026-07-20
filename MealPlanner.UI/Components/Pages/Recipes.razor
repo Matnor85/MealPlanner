@@ -1,8 +1,80 @@
 @page "/recipes"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IRecipeRepository RecipeRepo
+@inject NavigationManager Nav
 
 <h1 class="page-title">Recept</h1>
 
-<div class="stub">
-    <p>Här samlar du maträtter du lagar ofta, så du slipper mata in samma ingredienser om och om igen.</p>
-    <a class="stub-link" href="foods">Gå till råvaror →</a>
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="add-card">
+    <h2 class="add-title">Nytt recept</h2>
+
+    <label class="field">
+        <span>Namn</span>
+        <input @bind="name" placeholder="t.ex. Havregrynsgröt" />
+    </label>
+
+    <label class="field">
+        <span>Antal portioner receptet ger</span>
+        <input type="number" min="1" @bind="portions" />
+    </label>
+
+    <button class="btn-primary" @onclick="Add" disabled="@string.IsNullOrWhiteSpace(name)">
+        Skapa recept
+    </button>
 </div>
+
+@if (recipes.Count == 0)
+{
+    <div class="stub">Inga recept än.</div>
+}
+
+<div class="food-list">
+    @foreach (var r in recipes)
+    {
+        <button class="day-card" @onclick="() => Open(r.Id)">
+            <div class="day-left">
+                <span class="day-name">@r.Name</span>
+                <span class="day-meals">
+                    @r.Ingredients.Count ingredienser · @r.Portions port.
+                </span>
+            </div>
+            <div class="day-right">
+                <span class="day-kcal">@r.CaloriesPerPortion</span>
+                <span class="unit-sm">kcal/port.</span>
+            </div>
+        </button>
+    }
+</div>
+
+@code {
+    private List<Recipe> recipes = new();
+    private string? errorMessage;
+
+    private string name = "";
+    private int portions = 4;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => recipes = (await RecipeRepo.GetAllAsync()).ToList();
+
+    private async Task Add()
+    {
+        var recipe = new Recipe { Name = name.Trim(), Portions = Math.Max(1, portions) };
+        await RecipeRepo.AddAsync(recipe);
+
+        name = ""; portions = 4;
+        await LoadAsync();
+
+        // Gå direkt vidare till ingredienserna - ett tomt recept är oanvändbart
+        Nav.NavigateTo($"/recipe/{recipe.Id}");
+    }
+
+    private void Open(Guid id) => Nav.NavigateTo($"/recipe/{id}");
+}
