@@ -18,47 +18,63 @@ else
         <h1 class="day-title">@recipe.Name</h1>
         <div class="day-total">@recipe.CaloriesPerPortion <span class="unit">kcal/port.</span></div>
     </section>
-    <button class="btn-primary" @onclick='() => Nav.NavigateTo($"/cook/{Id}")'>
-        Laga den här rätten
-    </button>
+
     @if (errorMessage is not null)
     {
         <div class="banner-error">@errorMessage</div>
     }
 
-    <div class="add-card">
-        <h2 class="add-title">Lägg till ingrediens</h2>
-
-        <label class="field">
-            <span>Råvara</span>
-            <select @bind="newFoodId">
-                <option value="">Välj...</option>
-                @foreach (var f in foods)
-                {
-                    <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
-                }
-            </select>
-        </label>
-
-        <label class="field">
-            <span>Mängd i gram (för hela receptet)</span>
-            <input type="number" min="1" @bind="newGrams" />
-        </label>
-
-        <button class="btn-primary" @onclick="AddIngredient" disabled="@string.IsNullOrEmpty(newFoodId)">
-            Lägg till
+    @if (!isEditing)
+    {
+        <button class="btn-primary" @onclick='() => Nav.NavigateTo($"/cook/{Id}")'>
+            Laga den här rätten
         </button>
-    </div>
+        <button class="btn-secondary" @onclick="StartEditing">Redigera receptet</button>
+    }
+    else
+    {
+        <div class="edit-banner">
+            Redigeringsläge — ändringar sparas direkt.
+            <button class="link-btn" @onclick="StopEditing">Klar</button>
+        </div>
+
+        <div class="add-card">
+            <h2 class="add-title">Lägg till ingrediens</h2>
+
+            <label class="field">
+                <span>Råvara</span>
+                <select @bind="newFoodId">
+                    <option value="">Välj...</option>
+                    @foreach (var f in foods)
+                    {
+                        <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
+                    }
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Mängd i gram (för hela receptet)</span>
+                <input type="number" min="1" @bind="newGrams" />
+            </label>
+
+            <button class="btn-primary" @onclick="AddIngredient"
+                    disabled="@string.IsNullOrEmpty(newFoodId)">
+                Lägg till
+            </button>
+        </div>
+    }
 
     <div class="meal-group">
         <div class="meal-group-head">
             <span>Ingredienser</span>
             <span>@recipe.TotalCalories kcal totalt</span>
         </div>
+
         @if (recipe.Ingredients.Count == 0)
         {
             <div class="meal-row"><span class="muted">Inga ingredienser än.</span></div>
         }
+
         @foreach (var ing in recipe.Ingredients)
         {
             <div class="meal-row">
@@ -68,11 +84,29 @@ else
                 </div>
                 <div class="meal-right">
                     <span class="meal-kcal">@ing.CalculatedCalories</span>
-                    <button class="del-btn" @onclick="() => RemoveIngredient(ing.Id)" aria-label="Ta bort">×</button>
+
+                    @if (isEditing)
+                    {
+                        @if (pendingDeleteId == ing.Id)
+                        {
+                            <button class="confirm-btn" @onclick="() => RemoveIngredient(ing.Id)">
+                                Ta bort?
+                            </button>
+                            <button class="link-btn" @onclick="() => pendingDeleteId = null">Nej</button>
+                        }
+                        else
+                        {
+                            <button class="del-btn" @onclick="() => pendingDeleteId = ing.Id"
+                                    aria-label="Ta bort">
+                                ×
+                            </button>
+                        }
+                    }
                 </div>
             </div>
         }
     </div>
+
     @if (recipe.Steps.Count > 0)
     {
         <div class="meal-group">
@@ -88,7 +122,26 @@ else
             }
         </div>
     }
-    <button class="btn-danger" @onclick="DeleteRecipe">Radera receptet</button>
+
+    @if (isEditing)
+    {
+        @if (confirmDeleteRecipe)
+        {
+            <div class="danger-confirm">
+                Radera hela receptet? Det går inte att ångra.
+                <div class="btn-row">
+                    <button class="btn-secondary" @onclick="() => confirmDeleteRecipe = false">Avbryt</button>
+                    <button class="btn-danger" @onclick="DeleteRecipe">Ja, radera</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <button class="btn-danger" @onclick="() => confirmDeleteRecipe = true">
+                Radera receptet
+            </button>
+        }
+    }
 }
 
 @code {
@@ -97,6 +150,10 @@ else
     private Recipe? recipe;
     private List<FoodItem> foods = new();
     private string? errorMessage;
+
+    private bool isEditing;
+    private Guid? pendingDeleteId;
+    private bool confirmDeleteRecipe;
 
     private string newFoodId = "";
     private int newGrams = 100;
@@ -108,6 +165,19 @@ else
     }
 
     private async Task LoadAsync() => recipe = await RecipeRepo.GetByIdAsync(Id);
+
+    private void StartEditing()
+    {
+        isEditing = true;
+        errorMessage = null;
+    }
+
+    private void StopEditing()
+    {
+        isEditing = false;
+        pendingDeleteId = null;
+        confirmDeleteRecipe = false;
+    }
 
     private async Task AddIngredient()
     {
@@ -127,6 +197,7 @@ else
     private async Task RemoveIngredient(Guid ingredientId)
     {
         await RecipeRepo.RemoveIngredientAsync(ingredientId);
+        pendingDeleteId = null;
         await LoadAsync();
     }
 
@@ -140,6 +211,8 @@ else
         catch (Exception ex)
         {
             errorMessage = ex.Message;
+            confirmDeleteRecipe = false;
+            await LoadAsync();
         }
     }
 }

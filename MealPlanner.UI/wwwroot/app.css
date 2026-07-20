@@ -732,3 +732,121 @@ html, body {
     border-radius: var(--radius);
     font-weight: 550;
 }
+
+.small {
+    font-size: 0.85rem;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.ing-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.del-btn.small {
+    width: 24px;
+    height: 24px;
+    font-size: 0.95rem;
+}
+
+.draft-total {
+    text-align: right;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+    margin-top: 4px;
+}
+
+.ing-add {
+    display: flex;
+    gap: 7px;
+    margin: 14px 0;
+}
+
+    .ing-add select {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 12px;
+        font-size: 0.95rem;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: inherit;
+    }
+
+.gram-input {
+    flex: 0 0 78px;
+    padding: 11px 10px;
+    font-size: 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: inherit;
+}
+
+.btn-add {
+    flex: 0 0 44px;
+    border: none;
+    border-radius: 9px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+    .btn-add:disabled {
+        background: var(--line);
+        color: var(--ink-soft);
+    }
+
+.btn-row {
+    display: flex;
+    gap: 9px;
+    margin-top: 14px;
+}
+
+    .btn-row > button {
+        margin-top: 0;
+    }
+
+.edit-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 11px 15px;
+    border-radius: 10px;
+    margin: 14px 0;
+    font-size: 0.85rem;
+    font-weight: 550;
+}
+
+.confirm-btn {
+    padding: 5px 11px;
+    border: 1px solid var(--danger);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--danger);
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.danger-confirm {
+    margin-top: 20px;
+    padding: 16px;
+    background: #fdeceb;
+    color: var(--danger);
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+}
