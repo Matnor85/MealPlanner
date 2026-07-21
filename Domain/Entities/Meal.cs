@@ -16,7 +16,7 @@ public class Meal
     public Guid? FoodId { get; set; }
     public FoodItem? Food { get; set; }
 
-    // Används bara när måltiden är en enskild råvara
+    // Används bara när måltiden är en enskild råvara. Alltid gram.
     public int WeightInGrams { get; set; }
 
     public Guid? RecipeId { get; set; }
@@ -36,23 +36,25 @@ public class Meal
 
     public string DisplayAmount => IsRecipeMeal
         ? $"{Portions:0.##} port."
-        : $"{WeightInGrams} g";
+        : Food?.FormatAmount(WeightInGrams) ?? $"{WeightInGrams} g";
 
-    public int CalculatedCalories
+    public Nutrition Nutrition
     {
         get
         {
             GuardLoaded();
 
             if (Recipe is not null)
-                return (int)Math.Round(Recipe.CaloriesPerPortion * Portions);
+                return (Recipe.NutritionPerPortion * Portions).Rounded();
 
             if (Food is not null)
-                return (int)Math.Round((double)Food.CaloriesPer100g * WeightInGrams / 100);
+                return Food.ForGrams(WeightInGrams).Rounded();
 
-            return 0;
+            return Nutrition.Zero;
         }
     }
+
+    public int CalculatedCalories => Nutrition.Calories;
 
     // ----- Allergier och kost -----
 

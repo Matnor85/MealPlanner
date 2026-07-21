@@ -15,5 +15,7 @@ public class DailyPlan
 
     public List<Meal> Meals { get; set; } = new();
 
-    public int TotalCalories => Meals.Sum(m => m.CalculatedCalories);
+    public Nutrition Nutrition => Nutrition.Sum(Meals.Select(m => m.Nutrition)).Rounded();
+
+    public int TotalCalories => Nutrition.Calories;
 }

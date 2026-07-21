@@ -8,8 +8,12 @@ public class RecipeIngredient
     public Guid FoodId { get; set; }
     public FoodItem? Food { get; set; }
 
+    // Lagras alltid i gram, oavsett vilken enhet råvaran matas in med
     public int WeightInGrams { get; set; }
 
-    public int CalculatedCalories =>
-        Food is null ? 0 : (int)Math.Round((double)Food.CaloriesPer100g * WeightInGrams / 100);
+    public Nutrition Nutrition => Food?.ForGrams(WeightInGrams) ?? Nutrition.Zero;
+
+    public int CalculatedCalories => Nutrition.Calories;
+
+    public string DisplayAmount => Food?.FormatAmount(WeightInGrams) ?? $"{WeightInGrams} g";
 }

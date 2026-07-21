@@ -1,0 +1,242 @@
+@page "/foods/new"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IFoodItemRepository FoodRepo
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick="Cancel">‹ Tillbaka</button>
+
+<h1 class="page-title">Ny vara</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="add-card">
+    <label class="field">
+        <span>Namn</span>
+        <input @bind="name" placeholder="t.ex. Keso" />
+    </label>
+
+    <label class="field">
+        <span>Kategori</span>
+        <select value="@category" @onchange="OnCategoryChanged">
+            @foreach (var c in Enum.GetValues<FoodCategory>())
+            {
+                <option value="@c">@ToSwedish(c)</option>
+            }
+        </select>
+    </label>
+
+    <label class="field">
+        <span>Kan bytas mot</span>
+        <select @bind="substitutes">
+            @foreach (var g in Enum.GetValues<SubstitutionGroup>())
+            {
+                <option value="@g">@FoodItem.GroupLabel(g)</option>
+            }
+        </select>
+    </label>
+</div>
+
+<div class="add-card">
+    <div class="inline-form-head">Näring per 100 g</div>
+
+    <div class="macro-grid">
+        <label class="field">
+            <span>Kalorier</span>
+            <input type="number" min="0" @bind="kcal" />
+        </label>
+        <label class="field">
+            <span>Protein (g)</span>
+            <input type="number" step="0.1" min="0" @bind="protein" />
+        </label>
+        <label class="field">
+            <span>Fett (g)</span>
+            <input type="number" step="0.1" min="0" @bind="fat" />
+        </label>
+        <label class="field">
+            <span>Kolhydrater (g)</span>
+            <input type="number" step="0.1" min="0" @bind="carbs" />
+        </label>
+        <label class="field">
+            <span>Fiber (g)</span>
+            <input type="number" step="0.1" min="0" @bind="fiber" />
+        </label>
+        <label class="field">
+            <span>Salt (g)</span>
+            <input type="number" step="0.01" min="0" @bind="salt" />
+        </label>
+    </div>
+
+    @if (MacroMismatch is int diff)
+    {
+        <p class="muted small">
+            Makrona motsvarar ungefär @EstimatedCalories kcal, du angav @kcal.
+            Skillnad @diff kcal — värt att dubbelkolla.
+        </p>
+    }
+</div>
+
+<div class="add-card">
+    <div class="inline-form-head">Mängd</div>
+
+    <label class="field">
+        <span>Mäts oftast i</span>
+        <select value="@unit" @onchange="OnUnitChanged">
+            @foreach (var u in Enum.GetValues<MeasureUnit>())
+            {
+                <option value="@u">@u.LongLabel()</option>
+            }
+        </select>
+    </label>
+
+    @if (unit == MeasureUnit.Piece)
+    {
+        <label class="field">
+            <span>Styckvikt i gram</span>
+            <input type="number" step="1" min="0.1" @bind="gramsPerPiece" />
+        </label>
+    }
+    else if (unit != MeasureUnit.Gram)
+    {
+        <label class="field">
+            <span>Vikt per deciliter i gram</span>
+            <input type="number" step="1" min="1" @bind="gramsPerDeciliter" />
+        </label>
+
+        <p class="muted small">
+            Vatten är 100 g/dl. Vetemjöl ligger runt 60, strösocker 85, havregryn 40.
+            Härifrån räknas msk, tsk och krm ut automatiskt —
+            1 msk blir @((gramsPerDeciliter * 0.15).ToString("0.#")) g.
+        </p>
+    }
+
+    <div class="chips">
+        <label class="chip"><input type="checkbox" @bind="vegan" /> Vegansk</label>
+        <label class="chip"><input type="checkbox" @bind="lactose" /> Laktos</label>
+        <label class="chip"><input type="checkbox" @bind="gluten" /> Gluten</label>
+        <label class="chip"><input type="checkbox" @bind="nuts" /> Nötter</label>
+        <label class="chip"><input type="checkbox" @bind="milkPowder" /> Mjölkpulver</label>
+    </div>
+</div>
+
+<div class="btn-row">
+    <button class="btn-secondary" @onclick="Cancel">Avbryt</button>
+    <button class="btn-primary" @onclick="Save" disabled="@string.IsNullOrWhiteSpace(name)">
+        Spara varan
+    </button>
+</div>
+
+@code {
+    // Förifylls med det man hunnit skriva i sökrutan
+    [Parameter, SupplyParameterFromQuery(Name = "name")]
+    public string? PresetName { get; set; }
+
+    // Vart vi ska tillbaka efteråt. Tom = råvarulistan.
+    [Parameter, SupplyParameterFromQuery(Name = "return")]
+    public string? ReturnUrl { get; set; }
+
+    private string name = "";
+    private FoodCategory category = FoodCategory.Other;
+    private SubstitutionGroup substitutes = SubstitutionGroup.None;
+    private int kcal;
+    private double protein, fat, carbs, fiber, salt;
+    private MeasureUnit unit = MeasureUnit.Gram;
+    private double gramsPerDeciliter = 100;
+    private double gramsPerPiece = 100;
+    private bool vegan, lactose, gluten, nuts, milkPowder;
+
+    private string? errorMessage;
+
+    // Protein och kolhydrater ger 4 kcal/g, fett 9. Stämmer det inte alls
+    // är någon siffra troligen felskriven.
+    private int EstimatedCalories => (int)Math.Round(protein * 4 + carbs * 4 + fat * 9);
+
+    private int? MacroMismatch
+    {
+        get
+        {
+            if (kcal == 0 || EstimatedCalories == 0) return null;
+            int diff = Math.Abs(EstimatedCalories - kcal);
+            return diff > Math.Max(30, kcal * 0.2) ? diff : null;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(PresetName))
+            name = PresetName;
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        if (!Enum.TryParse<FoodCategory>(e.Value?.ToString(), out var picked)) return;
+
+        category = picked;
+        gramsPerDeciliter = Math.Round(FoodItem.DefaultDensity(picked) * 100);
+    }
+
+    private void OnUnitChanged(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<MeasureUnit>(e.Value?.ToString(), out var picked))
+            unit = picked;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            var food = new FoodItem
+            {
+                Name = name.Trim(),
+                Category = category,
+                Substitutes = substitutes,
+                CaloriesPer100g = kcal,
+                ProteinPer100g = protein,
+                FatPer100g = fat,
+                CarbsPer100g = carbs,
+                FiberPer100g = fiber,
+                SaltPer100g = salt,
+                Unit = unit,
+                GramsPerMilliliter = Math.Max(0.01, gramsPerDeciliter / 100.0),
+                GramsPerPiece = Math.Max(0.1, gramsPerPiece),
+                Vegan = vegan,
+                Lactose = lactose,
+                Gluten = gluten,
+                Nuts = nuts,
+                MilkPowder = milkPowder
+            };
+
+            await FoodRepo.AddAsync(food);
+
+            // Skicka med det nya id:t så mottagarsidan kan förvälja varan
+            string target = string.IsNullOrWhiteSpace(ReturnUrl) ? "/foods" : ReturnUrl;
+            string sep = target.Contains('?') ? "&" : "?";
+
+            Nav.NavigateTo($"{target}{sep}created={food.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void Cancel() =>
+        Nav.NavigateTo(string.IsNullOrWhiteSpace(ReturnUrl) ? "/foods" : ReturnUrl);
+
+    private static string ToSwedish(FoodCategory c) => c switch
+    {
+        FoodCategory.Grain => "Spannmål",
+        FoodCategory.Dairy => "Mejeri",
+        FoodCategory.Protein => "Protein",
+        FoodCategory.Vegetable => "Grönt",
+        FoodCategory.Fruit => "Frukt",
+        FoodCategory.Fat => "Fett",
+        FoodCategory.Treat => "Fika",
+        FoodCategory.Drink => "Dryck",
+        _ => "Övrigt"
+    };
+}

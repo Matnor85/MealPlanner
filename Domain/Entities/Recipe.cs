@@ -14,8 +14,14 @@ public class Recipe
     public List<RecipeIngredient> Ingredients { get; set; } = new();
     public List<RecipeStep> Steps { get; set; } = new();
 
-    public int TotalCalories => Ingredients.Sum(i => i.CalculatedCalories);
-    public int CaloriesPerPortion => Portions <= 0 ? 0 : TotalCalories / Portions;
+    public Nutrition TotalNutrition => Nutrition.Sum(Ingredients.Select(i => i.Nutrition));
+
+    public Nutrition NutritionPerPortion => Portions <= 0
+        ? Nutrition.Zero
+        : TotalNutrition * (1.0 / Portions);
+
+    public int TotalCalories => TotalNutrition.Calories;
+    public int CaloriesPerPortion => NutritionPerPortion.Calories;
 
     public int TotalMinutes => Steps.Sum(s => s.Minutes ?? 0);
 }

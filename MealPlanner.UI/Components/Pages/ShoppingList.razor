@@ -13,44 +13,118 @@
     <button class="icon-btn" @onclick="() => Shift(1)">›</button>
 </div>
 
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="toggle-row">
+    <label class="toggle">
+        <input type="checkbox" @bind="deductPantry" />
+        <span>Dra av det jag har hemma</span>
+    </label>
+    <label class="toggle">
+        <input type="checkbox" @bind="stockOnCheck" />
+        <span>Fyll på skafferiet när jag bockar av</span>
+    </label>
+</div>
+
 @if (isLoading)
 {
     <p class="muted">Laddar...</p>
 }
-else if (lines.Count == 0)
-{
-    <div class="stub">Inga måltider planerade för den här veckan.</div>
-}
 else
 {
-    <p class="muted shop-summary">
-        @lines.Count(l => l.IsChecked) av @lines.Count avbockade
-    </p>
-
-    @foreach (var group in lines.GroupBy(l => l.Food.Category))
+    @if (Visible.Count == 0 && extras.Count == 0)
     {
-        <div class="meal-group">
-            <div class="meal-group-head"><span>@ToSwedish(group.Key)</span></div>
-            @foreach (var line in group)
-            {
-                <label class="shop-row @(line.IsChecked ? "done" : "")">
-                    <input type="checkbox"
-                           checked="@line.IsChecked"
-                           @onchange="e => Toggle(line, (bool)e.Value!)" />
-                    <span class="shop-name">@line.Food.Name</span>
-                    <span class="shop-amount">@line.TotalGrams g</span>
-                </label>
-            }
+        <div class="stub">
+            @(lines.Count == 0
+                ? "Inga måltider planerade för den här veckan."
+                : "Allt du behöver finns redan hemma.")
         </div>
     }
+    else
+    {
+        <p class="muted shop-summary">
+            @CheckedCount av @TotalCount avbockade
+        </p>
+
+        @foreach (var group in Visible.GroupBy(l => l.Food.Category))
+        {
+            <div class="meal-group">
+                <div class="meal-group-head"><span>@ToSwedish(group.Key)</span></div>
+                @foreach (var line in group)
+                {
+                    <label class="shop-row @(line.IsChecked ? "done" : "")">
+                        <input type="checkbox"
+                               checked="@line.IsChecked"
+                               @onchange="e => Toggle(line, (bool)e.Value!)" />
+                        <span class="shop-name">@line.Food.Name</span>
+                        <span class="shop-amount">
+                            @line.Food.FormatAmount(deductPantry ? line.ToBuyGrams : line.NeededGrams)
+                            @if (deductPantry && line.PantryGrams > 0)
+                            {
+                                <span class="have-note">har @line.Food.FormatAmount(line.PantryGrams)</span>
+                            }
+                        </span>
+                    </label>
+                }
+            </div>
+        }
+    }
+
+    <div class="meal-group">
+        <div class="meal-group-head"><span>Övrigt</span></div>
+
+        @foreach (var extra in extras)
+        {
+            <label class="shop-row @(extra.IsChecked ? "done" : "")">
+                <input type="checkbox"
+                       checked="@extra.IsChecked"
+                       @onchange="e => ToggleExtra(extra, (bool)e.Value!)" />
+                <span class="shop-name">@extra.Text</span>
+                <button class="del-btn small" @onclick="() => RemoveExtra(extra.Id)"
+                        @onclick:preventDefault aria-label="Ta bort">
+                    ×
+                </button>
+            </label>
+        }
+
+        <div class="extra-add">
+            <input @bind="extraText"
+                   @bind:event="oninput"
+                   @onkeydown="OnExtraKeyDown"
+                   placeholder="t.ex. diskmedel" />
+            <button class="btn-add" @onclick="AddExtra"
+                    disabled="@string.IsNullOrWhiteSpace(extraText)">
+                +
+            </button>
+        </div>
+    </div>
 
     <button class="btn-secondary" @onclick="Clear">Nollställ avbockningar</button>
 }
 
 @code {
     private List<ShoppingLine> lines = new();
+    private List<ShoppingExtraItem> extras = new();
     private bool isLoading = true;
+    private string? errorMessage;
+
     private int year, week;
+    private bool deductPantry = true;
+    private bool stockOnCheck;
+
+    private string extraText = "";
+
+    // Med avdrag dolt visas bara det du faktiskt måste köpa
+    private List<ShoppingLine> Visible =>
+        deductPantry ? lines.Where(l => !l.FullyCovered).ToList() : lines;
+
+    private int TotalCount => Visible.Count + extras.Count;
+
+    private int CheckedCount =>
+        Visible.Count(l => l.IsChecked) + extras.Count(e => e.IsChecked);
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,6 +138,7 @@ else
     {
         isLoading = true;
         lines = await Shopping.BuildAsync(year, week);
+        extras = await Shopping.GetExtrasAsync(year, week);
         isLoading = false;
     }
 
@@ -84,7 +159,44 @@ else
 
     private async Task Toggle(ShoppingLine line, bool isChecked)
     {
-        await Shopping.SetCheckedAsync(year, week, line.Food.Id, isChecked);
+        if (stockOnCheck)
+            await Shopping.CheckAndStockAsync(year, week, line, isChecked);
+        else
+            await Shopping.SetCheckedAsync(year, week, line.Food.Id, isChecked);
+
+        await LoadAsync();
+    }
+
+    private async Task AddExtra()
+    {
+        try
+        {
+            await Shopping.AddExtraAsync(year, week, extraText);
+            extraText = "";
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task OnExtraKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(extraText))
+            await AddExtra();
+    }
+
+    private async Task ToggleExtra(ShoppingExtraItem extra, bool isChecked)
+    {
+        await Shopping.SetExtraCheckedAsync(extra.Id, isChecked);
+        await LoadAsync();
+    }
+
+    private async Task RemoveExtra(Guid id)
+    {
+        await Shopping.RemoveExtraAsync(id);
         await LoadAsync();
     }
 

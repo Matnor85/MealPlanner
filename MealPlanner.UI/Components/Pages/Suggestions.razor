@@ -1,0 +1,160 @@
+@page "/suggestions"
+@using Application.Services
+@using Domain.Entities
+@using Domain.Interfaces
+
+@* Egenskapen får INTE heta Suggestions - komponentklassen heter redan så *@
+@inject RecipeSuggestionService SuggestionSvc
+@inject IPantryRepository PantryRepo
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick='() => Nav.NavigateTo("/recipes")'>‹ Recept</button>
+
+<h1 class="page-title">Vad kan jag laga?</h1>
+
+@if (isLoading)
+{
+    <p class="muted">Räknar...</p>
+}
+else if (pantryIsEmpty)
+{
+    <div class="stub">
+        Skafferiet är tomt, så det finns inget att räkna på.
+        Lägg in det du har hemma först.
+        <a class="stub-link" href="pantry">Till skafferiet →</a>
+    </div>
+}
+else if (all.Count == 0)
+{
+    <div class="stub">
+        Du har inga recept än.
+        <a class="stub-link" href="recipes/new">Skapa ett →</a>
+    </div>
+}
+else if (Ready.Count == 0 && AlmostThere.Count == 0)
+{
+    <div class="stub">
+        Inget av dina recept går att laga med det du har hemma just nu.
+        <a class="stub-link" href="shopping">Se inköpslistan →</a>
+    </div>
+}
+else
+{
+    @if (Ready.Count > 0)
+    {
+        <div class="section-head">Kan lagas nu</div>
+        @foreach (var s in Ready)
+        {
+            @RenderCard(s)
+        }
+    }
+
+    @if (WithSwaps.Count > 0)
+    {
+        <div class="section-head">Går med utbyten</div>
+        @foreach (var s in WithSwaps)
+        {
+            @RenderCard(s)
+        }
+    }
+
+    @if (AlmostThere.Count > 0)
+    {
+        <div class="section-head">Nästan där</div>
+        @foreach (var s in AlmostThere)
+        {
+            @RenderCard(s)
+        }
+    }
+}
+
+@code {
+    private List<RecipeSuggestion> all = new();
+    private bool isLoading = true;
+    private bool pantryIsEmpty;
+
+    private List<RecipeSuggestion> Ready =>
+        all.Where(s => s.CanCookNow && !s.NeedsSubstitution).ToList();
+
+    private List<RecipeSuggestion> WithSwaps =>
+        all.Where(s => s.CanCookNow && s.NeedsSubstitution).ToList();
+
+    // Saknas bara en eller två saker är rätten värd att visa - det är
+    // skillnaden mellan att handla en vara och att handla hela middagen.
+    // Resten visas inte alls; en lista över allt du inte kan laga är brus.
+    private List<RecipeSuggestion> AlmostThere =>
+        all.Where(s => !s.CanCookNow && s.Missing.Count <= 2).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        pantryIsEmpty = !(await PantryRepo.GetAllAsync()).Any();
+
+        if (!pantryIsEmpty)
+            all = await SuggestionSvc.SuggestAsync();
+
+        isLoading = false;
+    }
+
+    private RenderFragment RenderCard(RecipeSuggestion s) => @<div class="suggest-card @(s.CanCookNow ? "ready" : "")"
+                                                              @onclick="() => Open(s.Recipe.Id)">
+
+        <div class="suggest-head">
+            <div>
+                <div class="suggest-name">
+                    @s.Recipe.Name
+                    @if (s.UsesExpiring)
+                    {
+                        <span class="tag warn">räddar mat</span>
+                    }
+                </div>
+                <div class="suggest-meta">
+                    @s.Recipe.CaloriesPerPortion kcal/port. · @s.Recipe.Portions port.
+                    @if (s.Recipe.TotalMinutes > 0)
+                    {
+                        <text> · @s.Recipe.TotalMinutes min</text>
+                    }
+                </div>
+            </div>
+            <div class="suggest-percent">@s.CoveragePercent<span class="pct">%</span></div>
+        </div>
+
+        <div class="coverage-wrap">
+            <div class="coverage-bar" style="width:@s.CoveragePercent%"></div>
+        </div>
+
+        @if (s.Substitutions.Count > 0)
+        {
+            <div class="swap-list">
+                @foreach (var swap in s.Substitutions)
+                {
+                    <div class="swap-row">
+                        <span class="swap-from">@swap.Original.Name</span>
+                        <span class="swap-arrow">→</span>
+                        <span class="swap-to">
+                            @swap.Replacement.Name @swap.Replacement.FormatAmount(swap.Grams)
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (s.Missing.Count > 0)
+        {
+            <div class="missing-list">
+                Saknas:
+                @foreach (var m in s.Missing)
+                {
+                    <span class="missing-item">
+                        @m.Food.Name @m.Food.FormatAmount(m.ShortfallGrams)
+                    </span>
+                }
+            </div>
+        }
+        else if (s.Substitutions.Count == 0)
+        {
+            <div class="missing-list ok">Allt finns hemma</div>
+        }
+    </div>;
+
+    private void Open(Guid recipeId) => Nav.NavigateTo($"/recipe/{recipeId}");
+}

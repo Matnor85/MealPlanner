@@ -1,0 +1,373 @@
+@page "/pantry"
+@using Application.Services
+@using Domain.Entities
+@using Domain.Interfaces
+@implements IDisposable
+
+@* Egenskapen får INTE heta Pantry - komponentklassen heter redan så *@
+@inject PantryService PantrySvc
+@inject IFoodItemRepository FoodRepo
+@inject NavigationManager Nav
+
+<h1 class="page-title">Skafferi</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="add-card">
+    <h2 class="add-title">Lägg till</h2>
+
+    <div class="field">
+        <span>Vara</span>
+        <SearchPicker Items="foodItems"
+                      @bind-SelectedId="pickFoodId"
+                      Placeholder="Sök vara..."
+                      CreateLabel="Lägg till ny produkt/vara"
+                      OnCreate="GoToNewFood" />
+    </div>
+
+    @if (SelectedFood is FoodItem food)
+    {
+        <div class="amount-row">
+            <input type="number" step="0.1" min="0.1" @bind="amount" class="gram-input" />
+            <select @bind="amountUnit" class="unit-select">
+                @foreach (var u in food.AvailableUnits)
+                {
+                    <option value="@u">@u.Label()</option>
+                }
+            </select>
+        </div>
+        <p class="muted small">= @Math.Round(food.ToGrams(amount, amountUnit)) g</p>
+
+        <label class="field">
+            <span>Bäst före (valfritt)</span>
+            <input type="date" @bind="bestBefore" />
+        </label>
+    }
+
+    <button class="btn-primary" @onclick="Add" disabled="@(SelectedFood is null || amount <= 0)">
+        Lägg i skafferiet
+    </button>
+</div>
+
+@if (items.Count == 0)
+{
+    <div class="stub">Skafferiet är tomt.</div>
+}
+else
+{
+    @if (Expiring.Count > 0)
+    {
+        <div class="meal-group">
+            <div class="meal-group-head warn"><span>Använd snart</span></div>
+            @foreach (var item in Expiring)
+            {
+                @RenderItem(item)
+            }
+        </div>
+    }
+
+    @foreach (var group in Rest.GroupBy(i => i.Food?.Category ?? FoodCategory.Other))
+    {
+        <div class="meal-group">
+            <div class="meal-group-head"><span>@ToSwedish(group.Key)</span></div>
+            @foreach (var item in group)
+            {
+                @RenderItem(item)
+            }
+        </div>
+    }
+
+    <button class="btn-secondary" @onclick="Clear">Töm skafferiet</button>
+}
+
+@code {
+    // Sätts av NewFood-sidan när man skapat en vara därifrån
+    [Parameter, SupplyParameterFromQuery(Name = "created")]
+    public Guid? CreatedFoodId { get; set; }
+
+    private List<PantryItem> items = new();
+    private List<FoodItem> foods = new();
+    private List<PickerItem> foodItems = new();
+    private string? errorMessage;
+
+    private Guid? pickFoodId;
+    private double amount = 1;
+    private MeasureUnit amountUnit = MeasureUnit.Gram;
+    private DateTime? bestBefore;
+
+    // Inline-redigering av mängd
+    private Guid? editingFoodId;
+    private double editAmount;
+    private MeasureUnit editUnit = MeasureUnit.Gram;
+
+    // Håll-in-för-att-repetera
+    private CancellationTokenSource? holdCts;
+    private readonly HashSet<Guid> dirty = new();
+
+    private FoodItem? SelectedFood => foods.FirstOrDefault(f => f.Id == pickFoodId);
+
+    private List<PantryItem> Expiring =>
+        items.Where(i => i.IsExpired || i.IsExpiringSoon).ToList();
+
+    private List<PantryItem> Rest =>
+        items.Where(i => !i.IsExpired && !i.IsExpiringSoon).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFoodsAsync();
+        await LoadAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Kom man tillbaka från "ny vara" ska den redan vara vald
+        if (CreatedFoodId is Guid created && pickFoodId != created)
+            pickFoodId = created;
+
+        // Enheten ska följa varan man valt, inte ligga kvar från förra gången
+        if (SelectedFood is FoodItem f && !f.AvailableUnits.Contains(amountUnit))
+            amountUnit = f.Unit;
+    }
+
+    private async Task LoadFoodsAsync()
+    {
+        foods = (await FoodRepo.GetAllAsync()).ToList();
+        foodItems = foods
+            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
+            .ToList();
+    }
+
+    private async Task LoadAsync() => items = await PantrySvc.GetAllAsync();
+
+    private void GoToNewFood(string typedName)
+    {
+        string q = string.IsNullOrWhiteSpace(typedName)
+            ? ""
+            : $"name={Uri.EscapeDataString(typedName)}&";
+
+        Nav.NavigateTo($"/foods/new?{q}return={Uri.EscapeDataString("/pantry")}");
+    }
+
+    private RenderFragment RenderItem(PantryItem item) => @<div class="pantry-row">
+        <div class="pantry-info">
+            <div class="meal-name">
+                @(item.Food?.Name ?? "Okänd")
+                @if (item.IsExpired)
+                {
+                    <span class="tag danger">utgången</span>
+                }
+                else if (item.DaysLeft is int d)
+                {
+                    <span class="tag">@(d == 0 ? "i dag" : $"{d} dgr")</span>
+                }
+            </div>
+
+            @if (editingFoodId != item.FoodId)
+            {
+                <button class="amount-btn" @onclick="() => StartEdit(item)">
+                    @item.DisplayAmount
+                </button>
+            }
+        </div>
+
+        @if (editingFoodId == item.FoodId && item.Food is FoodItem ef)
+        {
+            <div class="edit-amount">
+                <input type="number" step="0.1" min="0" @bind="editAmount" class="gram-input" />
+                <select @bind="editUnit" class="unit-select">
+                    @foreach (var u in ef.AvailableUnits)
+                    {
+                        <option value="@u">@u.Label()</option>
+                    }
+                </select>
+                <button class="btn-add" @onclick="() => SaveEdit(item)">✓</button>
+                <button class="move-btn" @onclick="CancelEdit">×</button>
+            </div>
+        }
+        else
+        {
+            <div class="stepper">
+                <button class="step-btn"
+                        @onpointerdown="() => StartHold(item, -0.25)"
+                        @onpointerup="StopHold"
+                        @onpointerleave="StopHold"
+                        @onpointercancel="StopHold"
+                        aria-label="Minska">
+                    −
+                </button>
+
+                <button class="step-btn"
+                        @onpointerdown="() => StartHold(item, 0.25)"
+                        @onpointerup="StopHold"
+                        @onpointerleave="StopHold"
+                        @onpointercancel="StopHold"
+                        aria-label="Öka">
+                    +
+                </button>
+
+                <button class="del-btn" @onclick="() => Remove(item.FoodId)"
+                        aria-label="Ta bort">
+                    ×
+                </button>
+            </div>
+        }
+    </div>;
+
+    // ----- Lägga till -----
+
+    private async Task Add()
+    {
+        if (SelectedFood is not FoodItem food) return;
+
+        try
+        {
+            double grams = food.ToGrams(amount, amountUnit);
+            DateOnly? bb = bestBefore is DateTime dt ? DateOnly.FromDateTime(dt) : null;
+
+            await PantrySvc.AddAsync(food.Id, grams, bb);
+
+            pickFoodId = null;
+            amount = 1;
+            bestBefore = null;
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    // ----- Inline-redigering -----
+
+    private void StartEdit(PantryItem item)
+    {
+        if (item.Food is not FoodItem food) return;
+
+        editingFoodId = item.FoodId;
+        editUnit = food.Unit;
+        editAmount = Math.Round(food.FromGrams(item.Grams, food.Unit), 2);
+    }
+
+    private async Task SaveEdit(PantryItem item)
+    {
+        if (item.Food is not FoodItem food) return;
+
+        double grams = food.ToGrams(editAmount, editUnit);
+        await PantrySvc.SetAmountAsync(item.FoodId, grams);
+
+        editingFoodId = null;
+        await LoadAsync();
+    }
+
+    private void CancelEdit() => editingFoodId = null;
+
+    // ----- Stega med håll-in -----
+
+    // Ändringarna görs i minnet och sparas EN gång när knappen släpps.
+    // Annars hade varje repetition blivit en databasskrivning.
+    private void Nudge(PantryItem item, double unitDelta)
+    {
+        if (item.Food is not FoodItem food) return;
+
+        double delta = food.ToGrams(unitDelta, food.Unit);
+        item.Grams = Math.Max(0, item.Grams + delta);
+        dirty.Add(item.FoodId);
+    }
+
+    private async Task StartHold(PantryItem item, double unitDelta)
+    {
+        StopHold();
+
+        Nudge(item, unitDelta);
+
+        holdCts = new CancellationTokenSource();
+        var token = holdCts.Token;
+
+        try
+        {
+            // Kort paus innan repetitionen drar igång, annars skenar
+            // den vid ett vanligt klick.
+            await Task.Delay(400, token);
+
+            int interval = 200;
+
+            while (!token.IsCancellationRequested)
+            {
+                Nudge(item, unitDelta);
+                await InvokeAsync(StateHasChanged);
+
+                // Accelererar, så långa hopp går snabbt
+                interval = Math.Max(50, interval - 20);
+                await Task.Delay(interval, token);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Normalt - användaren släppte knappen
+        }
+    }
+
+    private void StopHold()
+    {
+        holdCts?.Cancel();
+        holdCts?.Dispose();
+        holdCts = null;
+
+        if (dirty.Count > 0)
+            _ = FlushAsync();
+    }
+
+    private async Task FlushAsync()
+    {
+        var ids = dirty.ToList();
+        dirty.Clear();
+
+        foreach (var id in ids)
+        {
+            var item = items.FirstOrDefault(i => i.FoodId == id);
+            if (item is null) continue;
+
+            await PantrySvc.SetAmountAsync(id, item.Grams);
+        }
+
+        await LoadAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ----- Ta bort -----
+
+    private async Task Remove(Guid foodId)
+    {
+        await PantrySvc.RemoveAsync(foodId);
+        await LoadAsync();
+    }
+
+    private async Task Clear()
+    {
+        await PantrySvc.ClearAsync();
+        await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        holdCts?.Cancel();
+        holdCts?.Dispose();
+    }
+
+    private static string ToSwedish(FoodCategory c) => c switch
+    {
+        FoodCategory.Grain => "Spannmål",
+        FoodCategory.Dairy => "Mejeri",
+        FoodCategory.Protein => "Protein",
+        FoodCategory.Vegetable => "Grönt",
+        FoodCategory.Fruit => "Frukt",
+        FoodCategory.Fat => "Fett",
+        FoodCategory.Treat => "Fika",
+        FoodCategory.Drink => "Dryck",
+        _ => "Övrigt"
+    };
+}

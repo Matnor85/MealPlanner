@@ -48,11 +48,67 @@ public class ShoppingRepository : IShoppingRepository
     public async Task ClearWeekAsync(int year, int weekNumber)
     {
         await using var context = await _factory.CreateDbContextAsync();
+
         var states = await context.ShoppingItems
             .Where(s => s.Year == year && s.WeekNumber == weekNumber)
             .ToListAsync();
 
         context.ShoppingItems.RemoveRange(states);
+
+        var extras = await context.ShoppingExtras
+            .Where(e => e.Year == year && e.WeekNumber == weekNumber)
+            .ToListAsync();
+
+        foreach (var extra in extras)
+            extra.IsChecked = false;
+
         await context.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<ShoppingExtraItem>> GetExtrasAsync(int year, int weekNumber)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        return await context.ShoppingExtras
+            .AsNoTracking()
+            .Where(e => e.Year == year && e.WeekNumber == weekNumber)
+            .OrderBy(e => e.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task AddExtraAsync(int year, int weekNumber, string text)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+
+        context.ShoppingExtras.Add(new ShoppingExtraItem
+        {
+            Year = year,
+            WeekNumber = weekNumber,
+            Text = text.Trim()
+        });
+
+        await context.SaveChangesAsync();
+    }
+
+    public async Task SetExtraCheckedAsync(Guid id, bool isChecked)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var extra = await context.ShoppingExtras.FirstOrDefaultAsync(e => e.Id == id);
+        if (extra is null) return;
+
+        extra.IsChecked = isChecked;
+        await context.SaveChangesAsync();
+    }
+
+    public async Task RemoveExtraAsync(Guid id)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var extra = await context.ShoppingExtras.FirstOrDefaultAsync(e => e.Id == id);
+        if (extra is not null)
+        {
+            context.ShoppingExtras.Remove(extra);
+            await context.SaveChangesAsync();
+        }
     }
 }

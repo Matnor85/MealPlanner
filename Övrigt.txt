@@ -39,3 +39,24 @@ Noterat — hela filer som standard från och med nu, med filsökvägen alltid u
 Var vi står just nu: veckovy, dagvy med råvaror och recept, råvarubibliotek med kategorifilter, receptsida med utkastsläge, receptdetalj med redigeringsläge, lagningsläge med avbockning, inköpslista och profil med graf. Det som fortfarande ligger löst är kopplingen mellan profilens kaloriemål och veckovyn — dagarna visar en siffra men färgas inte mot målet. Och GramsPerPiece på FoodItem, så inköpslistan kan skriva "ca 4 ägg" i stället för "220 g".
 
 Säg vad du vill ta härnäst.
+
+
+
+Två poänger med den här designen. Formuläret frågar efter gram per deciliter, inte densitet, eftersom det är ett tal du kan läsa av på en förpackning eller slå upp. Densiteten räknas fram genom att dela med hundra.
+
+Och FormatAmount väljer nu mått efter mängd. Samma olivolja visas som "1,2 msk" i ett recept och "1,5 dl" på inköpslistan om du planerat mycket matlagning — utan att du behöver ställa in något. Alternativet, att låsa varje råvara vid ett mått, hade gett "36 tsk olja" på inköpslistan.
+
+Nästa steg vore att låta receptformuläret välja mått per ingrediens via AvailableUnits, så du kan skriva "2 msk olivolja" i stället för att räkna om till gram i huvudet. Säg till om du vill ha det.
+
+
+
+
+Om notiser
+
+Notiser är inte en funktion i din app, det är en integration mot operativsystemet. MAUI har inget inbyggt för lokala notiser, så du behöver ett paket som Plugin.LocalNotification. Sedan tillkommer behörighetsdialoger på både Android och iOS, POST_NOTIFICATIONS i manifestet, och en schemaläggning som måste bokas om varje gång du ändrar ett bäst före-datum eller tar bort en vara. Android dödar dessutom bakgrundsarbete aggressivt på många tillverkares telefoner, så "notisen kom inte" blir ett återkommande felsökningsproblem som inte är ditt fel.
+
+Det är fullt görbart, men det är en egen kväll eller två, och det är svårt att testa i emulatorn.
+
+Den billiga varianten som ger nästan lika mycket: en varningsruta högst upp på startsidan när något går ut inom tre dagar. Du ser den varje gång du öppnar appen, vilket i praktiken är oftare än du skulle reagera på en notis. Skafferisidan har redan gruppen "Använd snart" — det handlar bara om att lyfta upp den till veckovyn.
+
+Säg till så bygger jag den, den är liten. Riktiga notiser skulle jag spara till appen i övrigt känns färdig.

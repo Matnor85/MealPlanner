@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<WeighIn> WeighIns { get; set; }
     public DbSet<ShoppingItemState> ShoppingItems { get; set; }
+    public DbSet<ShoppingExtraItem> ShoppingExtras { get; set; }
+    public DbSet<PantryItem> PantryItems { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
@@ -32,30 +34,11 @@ public class AppDbContext : DbContext
             .Property(f => f.Name)
             .IsRequired();
 
-        modelBuilder.Entity<FoodItem>().HasData(
-            new FoodItem { Id = F("01"), Name = "Havregryn", CaloriesPer100g = 370, Vegan = true, Gluten = true, Category = FoodCategory.Grain },
-            new FoodItem { Id = F("02"), Name = "Ägg", CaloriesPer100g = 155, Category = FoodCategory.Protein },
-            new FoodItem { Id = F("03"), Name = "Mellanmjölk", CaloriesPer100g = 45, Lactose = true, Category = FoodCategory.Dairy },
-            new FoodItem { Id = F("04"), Name = "Kycklingfilé", CaloriesPer100g = 106, Category = FoodCategory.Protein },
-            new FoodItem { Id = F("05"), Name = "Kokt potatis", CaloriesPer100g = 87, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("06"), Name = "Fullkornspasta", CaloriesPer100g = 350, Vegan = true, Gluten = true, Category = FoodCategory.Grain },
-            new FoodItem { Id = F("07"), Name = "Banan", CaloriesPer100g = 89, Vegan = true, Category = FoodCategory.Fruit },
-            new FoodItem { Id = F("08"), Name = "Laxfilé", CaloriesPer100g = 208, Category = FoodCategory.Protein },
-            new FoodItem { Id = F("09"), Name = "Kanelbulle", CaloriesPer100g = 380, Gluten = true, Lactose = true, Category = FoodCategory.Treat },
-            new FoodItem { Id = F("0a"), Name = "Broccoli", CaloriesPer100g = 34, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("0b"), Name = "Chokladkaka", CaloriesPer100g = 535, Lactose = true, MilkPowder = true, Category = FoodCategory.Treat },
-            new FoodItem { Id = F("0c"), Name = "Kaffe, svart", CaloriesPer100g = 2, Vegan = true, Category = FoodCategory.Drink },
+        // Utbytesgruppen slås upp ofta av receptförslagen
+        modelBuilder.Entity<FoodItem>()
+            .HasIndex(f => f.Substitutes);
 
-            // Råvaror till köttfärssåsen
-            new FoodItem { Id = F("0d"), Name = "Spaghetti, torr", CaloriesPer100g = 355, Vegan = true, Gluten = true, Category = FoodCategory.Grain },
-            new FoodItem { Id = F("0e"), Name = "Nötfärs 12%", CaloriesPer100g = 200, Category = FoodCategory.Protein },
-            new FoodItem { Id = F("0f"), Name = "Krossade tomater", CaloriesPer100g = 32, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("10"), Name = "Gul lök", CaloriesPer100g = 40, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("11"), Name = "Vitlök", CaloriesPer100g = 149, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("12"), Name = "Olivolja", CaloriesPer100g = 884, Vegan = true, Category = FoodCategory.Fat },
-            new FoodItem { Id = F("13"), Name = "Tomatpuré", CaloriesPer100g = 82, Vegan = true, Category = FoodCategory.Vegetable },
-            new FoodItem { Id = F("14"), Name = "Riven parmesan", CaloriesPer100g = 431, Lactose = true, Category = FoodCategory.Dairy }
-        );
+        SeedFoods(modelBuilder);
 
         // ----- Veckor, dagar, måltider -----
 
@@ -122,6 +105,19 @@ public class AppDbContext : DbContext
 
         SeedBolognese(modelBuilder);
 
+        // ----- Skafferi -----
+
+        // En rad per råvara. Mängder slås ihop i stället för att bli dubbletter.
+        modelBuilder.Entity<PantryItem>()
+            .HasIndex(p => p.FoodId)
+            .IsUnique();
+
+        modelBuilder.Entity<PantryItem>()
+            .HasOne(p => p.Food)
+            .WithMany()
+            .HasForeignKey(p => p.FoodId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // ----- Profil och invägningar -----
 
         modelBuilder.Entity<WeighIn>()
@@ -133,6 +129,503 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ShoppingItemState>()
             .HasIndex(s => new { s.Year, s.WeekNumber, s.FoodId })
             .IsUnique();
+
+        modelBuilder.Entity<ShoppingExtraItem>()
+            .HasIndex(e => new { e.Year, e.WeekNumber });
+
+        modelBuilder.Entity<ShoppingExtraItem>()
+            .Property(e => e.Text)
+            .IsRequired();
+    }
+
+    // Näringsvärden är ungefärliga och per 100 g.
+    // GramsPerMilliliter är densiteten, GramsPerPiece styckvikten.
+    private static void SeedFoods(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FoodItem>().HasData(
+            new FoodItem
+            {
+                Id = F("01"),
+                Name = "Havregryn",
+                Category = FoodCategory.Grain,
+                CaloriesPer100g = 370,
+                ProteinPer100g = 13.5,
+                FatPer100g = 7,
+                CarbsPer100g = 59,
+                FiberPer100g = 10,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 0.4,
+                Vegan = true,
+                Gluten = true
+            },
+
+            new FoodItem
+            {
+                Id = F("02"),
+                Name = "Ägg",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 155,
+                ProteinPer100g = 13,
+                FatPer100g = 11,
+                CarbsPer100g = 1.1,
+                FiberPer100g = 0,
+                SaltPer100g = 0.3,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 58
+            },
+
+            new FoodItem
+            {
+                Id = F("03"),
+                Name = "Mellanmjölk",
+                Category = FoodCategory.Dairy,
+                CaloriesPer100g = 45,
+                ProteinPer100g = 3.4,
+                FatPer100g = 1.5,
+                CarbsPer100g = 5,
+                FiberPer100g = 0,
+                SaltPer100g = 0.1,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 1.03,
+                Lactose = true,
+                Substitutes = SubstitutionGroup.MilkDrink
+            },
+
+            new FoodItem
+            {
+                Id = F("04"),
+                Name = "Kycklingfilé",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 106,
+                ProteinPer100g = 23,
+                FatPer100g = 1.5,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0.15
+            },
+
+            new FoodItem
+            {
+                Id = F("05"),
+                Name = "Kokt potatis",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 87,
+                ProteinPer100g = 2,
+                FatPer100g = 0.1,
+                CarbsPer100g = 20,
+                FiberPer100g = 1.8,
+                SaltPer100g = 0.01,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("06"),
+                Name = "Fullkornspasta",
+                Category = FoodCategory.Grain,
+                CaloriesPer100g = 350,
+                ProteinPer100g = 13,
+                FatPer100g = 2.5,
+                CarbsPer100g = 62,
+                FiberPer100g = 8,
+                SaltPer100g = 0.02,
+                Vegan = true,
+                Gluten = true,
+                Substitutes = SubstitutionGroup.PastaRice
+            },
+
+            new FoodItem
+            {
+                Id = F("07"),
+                Name = "Banan",
+                Category = FoodCategory.Fruit,
+                CaloriesPer100g = 89,
+                ProteinPer100g = 1.1,
+                FatPer100g = 0.3,
+                CarbsPer100g = 23,
+                FiberPer100g = 2.6,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 120,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("08"),
+                Name = "Laxfilé",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 208,
+                ProteinPer100g = 20,
+                FatPer100g = 13,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0.1
+            },
+
+            new FoodItem
+            {
+                Id = F("09"),
+                Name = "Kanelbulle",
+                Category = FoodCategory.Treat,
+                CaloriesPer100g = 380,
+                ProteinPer100g = 7,
+                FatPer100g = 14,
+                CarbsPer100g = 55,
+                FiberPer100g = 2.5,
+                SaltPer100g = 0.9,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 70,
+                Gluten = true,
+                Lactose = true
+            },
+
+            new FoodItem
+            {
+                Id = F("0a"),
+                Name = "Broccoli",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 34,
+                ProteinPer100g = 2.8,
+                FatPer100g = 0.4,
+                CarbsPer100g = 7,
+                FiberPer100g = 2.6,
+                SaltPer100g = 0.03,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("0b"),
+                Name = "Chokladkaka",
+                Category = FoodCategory.Treat,
+                CaloriesPer100g = 535,
+                ProteinPer100g = 7.8,
+                FatPer100g = 31,
+                CarbsPer100g = 57,
+                FiberPer100g = 3.4,
+                SaltPer100g = 0.08,
+                Lactose = true,
+                MilkPowder = true
+            },
+
+            new FoodItem
+            {
+                Id = F("0c"),
+                Name = "Kaffe, svart",
+                Category = FoodCategory.Drink,
+                CaloriesPer100g = 2,
+                ProteinPer100g = 0.1,
+                FatPer100g = 0,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 1,
+                Vegan = true
+            },
+
+            // Råvaror till köttfärssåsen
+            new FoodItem
+            {
+                Id = F("0d"),
+                Name = "Spaghetti, torr",
+                Category = FoodCategory.Grain,
+                CaloriesPer100g = 355,
+                ProteinPer100g = 12,
+                FatPer100g = 1.5,
+                CarbsPer100g = 71,
+                FiberPer100g = 3,
+                SaltPer100g = 0.01,
+                Vegan = true,
+                Gluten = true,
+                Substitutes = SubstitutionGroup.PastaRice
+            },
+
+            new FoodItem
+            {
+                Id = F("0e"),
+                Name = "Nötfärs 12%",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 200,
+                ProteinPer100g = 19,
+                FatPer100g = 12,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0.2,
+                Substitutes = SubstitutionGroup.MincedBase
+            },
+
+            new FoodItem
+            {
+                Id = F("0f"),
+                Name = "Krossade tomater",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 32,
+                ProteinPer100g = 1.3,
+                FatPer100g = 0.2,
+                CarbsPer100g = 5,
+                FiberPer100g = 1.4,
+                SaltPer100g = 0.1,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 1.02,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.TomatoBase
+            },
+
+            new FoodItem
+            {
+                Id = F("10"),
+                Name = "Gul lök",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 40,
+                ProteinPer100g = 1.1,
+                FatPer100g = 0.1,
+                CarbsPer100g = 9,
+                FiberPer100g = 1.7,
+                SaltPer100g = 0.01,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 110,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.Onion
+            },
+
+            new FoodItem
+            {
+                Id = F("11"),
+                Name = "Vitlöksklyfta",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 149,
+                ProteinPer100g = 6.4,
+                FatPer100g = 0.5,
+                CarbsPer100g = 33,
+                FiberPer100g = 2.1,
+                SaltPer100g = 0.02,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 4,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("12"),
+                Name = "Olivolja",
+                Category = FoodCategory.Fat,
+                CaloriesPer100g = 884,
+                ProteinPer100g = 0,
+                FatPer100g = 100,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Tablespoon,
+                GramsPerMilliliter = 0.91,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.CookingFat
+            },
+
+            new FoodItem
+            {
+                Id = F("13"),
+                Name = "Tomatpuré",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 82,
+                ProteinPer100g = 4.3,
+                FatPer100g = 0.5,
+                CarbsPer100g = 16,
+                FiberPer100g = 3.3,
+                SaltPer100g = 0.1,
+                Unit = MeasureUnit.Tablespoon,
+                GramsPerMilliliter = 1.1,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("14"),
+                Name = "Riven parmesan",
+                Category = FoodCategory.Dairy,
+                CaloriesPer100g = 431,
+                ProteinPer100g = 38,
+                FatPer100g = 29,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 1.6,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 0.4,
+                Lactose = true,
+                Substitutes = SubstitutionGroup.HardCheese
+            },
+
+            new FoodItem
+            {
+                Id = F("15"),
+                Name = "Salt",
+                Category = FoodCategory.Other,
+                CaloriesPer100g = 0,
+                ProteinPer100g = 0,
+                FatPer100g = 0,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 100,
+                Unit = MeasureUnit.Teaspoon,
+                GramsPerMilliliter = 1.2,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("16"),
+                Name = "Svartpeppar, malen",
+                Category = FoodCategory.Other,
+                CaloriesPer100g = 251,
+                ProteinPer100g = 10,
+                FatPer100g = 3.3,
+                CarbsPer100g = 39,
+                FiberPer100g = 25,
+                SaltPer100g = 0.04,
+                Unit = MeasureUnit.Pinch,
+                GramsPerMilliliter = 0.5,
+                Vegan = true
+            },
+
+            new FoodItem
+            {
+                Id = F("17"),
+                Name = "Vetemjöl",
+                Category = FoodCategory.Grain,
+                CaloriesPer100g = 343,
+                ProteinPer100g = 10,
+                FatPer100g = 1.5,
+                CarbsPer100g = 69,
+                FiberPer100g = 3.5,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 0.6,
+                Vegan = true,
+                Gluten = true,
+                Substitutes = SubstitutionGroup.Flour
+            },
+
+            new FoodItem
+            {
+                Id = F("18"),
+                Name = "Strösocker",
+                Category = FoodCategory.Other,
+                CaloriesPer100g = 400,
+                ProteinPer100g = 0,
+                FatPer100g = 0,
+                CarbsPer100g = 100,
+                FiberPer100g = 0,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 0.85,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.Sweetener
+            },
+
+            // Utbytesalternativ, så funktionen har något att arbeta med
+            new FoodItem
+            {
+                Id = F("19"),
+                Name = "Röda linser, torra",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 350,
+                ProteinPer100g = 24,
+                FatPer100g = 1,
+                CarbsPer100g = 60,
+                FiberPer100g = 11,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 0.85,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.MincedBase
+            },
+
+            new FoodItem
+            {
+                Id = F("1a"),
+                Name = "Svarta bönor, avrunna",
+                Category = FoodCategory.Protein,
+                CaloriesPer100g = 91,
+                ProteinPer100g = 6,
+                FatPer100g = 0.5,
+                CarbsPer100g = 12,
+                FiberPer100g = 7,
+                SaltPer100g = 0.5,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.MincedBase
+            },
+
+            new FoodItem
+            {
+                Id = F("1b"),
+                Name = "Havredryck",
+                Category = FoodCategory.Drink,
+                CaloriesPer100g = 45,
+                ProteinPer100g = 1,
+                FatPer100g = 1.5,
+                CarbsPer100g = 6.6,
+                FiberPer100g = 0.8,
+                SaltPer100g = 0.1,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 1.03,
+                Vegan = true,
+                Gluten = true,
+                Substitutes = SubstitutionGroup.MilkDrink
+            },
+
+            new FoodItem
+            {
+                Id = F("1c"),
+                Name = "Rapsolja",
+                Category = FoodCategory.Fat,
+                CaloriesPer100g = 900,
+                ProteinPer100g = 0,
+                FatPer100g = 100,
+                CarbsPer100g = 0,
+                FiberPer100g = 0,
+                SaltPer100g = 0,
+                Unit = MeasureUnit.Tablespoon,
+                GramsPerMilliliter = 0.92,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.CookingFat
+            },
+
+            new FoodItem
+            {
+                Id = F("1d"),
+                Name = "Rödlök",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 42,
+                ProteinPer100g = 1.2,
+                FatPer100g = 0.1,
+                CarbsPer100g = 9,
+                FiberPer100g = 1.8,
+                SaltPer100g = 0.01,
+                Unit = MeasureUnit.Piece,
+                GramsPerPiece = 100,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.Onion
+            },
+
+            new FoodItem
+            {
+                Id = F("1e"),
+                Name = "Passerade tomater",
+                Category = FoodCategory.Vegetable,
+                CaloriesPer100g = 29,
+                ProteinPer100g = 1.2,
+                FatPer100g = 0.2,
+                CarbsPer100g = 4.5,
+                FiberPer100g = 1.2,
+                SaltPer100g = 0.1,
+                Unit = MeasureUnit.Deciliter,
+                GramsPerMilliliter = 1.03,
+                Vegan = true,
+                Substitutes = SubstitutionGroup.TomatoBase
+            }
+        );
     }
 
     private static void SeedBolognese(ModelBuilder modelBuilder)
@@ -150,9 +643,9 @@ public class AppDbContext : DbContext
             new RecipeIngredient { Id = Ing("01"), RecipeId = BologneseId, FoodId = F("0d"), WeightInGrams = 400 },
             new RecipeIngredient { Id = Ing("02"), RecipeId = BologneseId, FoodId = F("0e"), WeightInGrams = 500 },
             new RecipeIngredient { Id = Ing("03"), RecipeId = BologneseId, FoodId = F("0f"), WeightInGrams = 400 },
-            new RecipeIngredient { Id = Ing("04"), RecipeId = BologneseId, FoodId = F("10"), WeightInGrams = 100 },
-            new RecipeIngredient { Id = Ing("05"), RecipeId = BologneseId, FoodId = F("11"), WeightInGrams = 10 },
-            new RecipeIngredient { Id = Ing("06"), RecipeId = BologneseId, FoodId = F("12"), WeightInGrams = 20 },
+            new RecipeIngredient { Id = Ing("04"), RecipeId = BologneseId, FoodId = F("10"), WeightInGrams = 110 },
+            new RecipeIngredient { Id = Ing("05"), RecipeId = BologneseId, FoodId = F("11"), WeightInGrams = 8 },
+            new RecipeIngredient { Id = Ing("06"), RecipeId = BologneseId, FoodId = F("12"), WeightInGrams = 18 },
             new RecipeIngredient { Id = Ing("07"), RecipeId = BologneseId, FoodId = F("13"), WeightInGrams = 40 },
             new RecipeIngredient { Id = Ing("08"), RecipeId = BologneseId, FoodId = F("14"), WeightInGrams = 40 }
         );

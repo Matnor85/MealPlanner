@@ -39,20 +39,16 @@ public static class MauiProgram
         builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
         builder.Services.AddScoped<IShoppingRepository, ShoppingRepository>();
         builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
-        builder.Services.AddScoped<ProfileService>();
+        builder.Services.AddScoped<IPantryRepository, PantryRepository>();
+
         builder.Services.AddScoped<WeeklyPlannerService>();
         builder.Services.AddScoped<ShoppingListService>();
+        builder.Services.AddScoped<ProfileService>();
+        builder.Services.AddScoped<PantryService>();
+        builder.Services.AddScoped<RecipeSuggestionService>();
 
         var app = builder.Build();
 
-        //// Skapa databasen en gång vid start, inte vid varje sidladdning
-        //using (var scope = app.Services.CreateScope())
-        //{
-        //    var factory = scope.ServiceProvider
-        //        .GetRequiredService<IDbContextFactory<AppDbContext>>();
-        //    using var context = factory.CreateDbContext();
-        //    context.Database.EnsureCreated();
-        //}
         using (var scope = app.Services.CreateScope())
         {
             var factory = scope.ServiceProvider

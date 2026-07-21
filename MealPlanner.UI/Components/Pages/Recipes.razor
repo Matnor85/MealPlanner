@@ -7,9 +7,14 @@
 
 <h1 class="page-title">Recept</h1>
 
-<button class="btn-primary" @onclick='() => Nav.NavigateTo("/recipes/new")'>
-    Nytt recept
-</button>
+<div class="btn-row top">
+    <button class="btn-secondary" @onclick='() => Nav.NavigateTo("/suggestions")'>
+        Vad kan jag laga?
+    </button>
+    <button class="btn-primary" @onclick='() => Nav.NavigateTo("/recipes/new")'>
+        Nytt recept
+    </button>
+</div>
 
 @if (recipes.Count == 0)
 {
