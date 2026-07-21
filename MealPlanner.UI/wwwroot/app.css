@@ -850,3 +850,131 @@ html, body {
     border-radius: var(--radius);
     font-size: 0.88rem;
 }
+
+.stat-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.stat-card {
+    flex: 1;
+    padding: 15px 10px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+    .stat-value.down {
+        color: var(--accent);
+    }
+
+    .stat-value.up {
+        color: var(--ink);
+    }
+
+.stat-label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    margin-top: 3px;
+}
+
+.center {
+    text-align: center;
+}
+
+.banner-warn {
+    background: #fff6e0;
+    color: #8a5a00;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.weigh-row {
+    display: flex;
+    gap: 7px;
+    margin-bottom: 6px;
+}
+
+    .weigh-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 11px 12px;
+        font-size: 0.95rem;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: inherit;
+    }
+
+.chart-wrap {
+    margin-top: 16px;
+}
+
+.chart {
+    width: 100%;
+    height: 130px;
+    overflow: visible;
+}
+
+.chart-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.chart-dot {
+    fill: var(--ink-soft);
+    opacity: 0.5;
+}
+
+.chart-goal {
+    stroke: var(--ink-soft);
+    stroke-width: 1;
+    opacity: 0.6;
+}
+
+.chart-legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 8px;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+}
+
+    .chart-legend i {
+        display: inline-block;
+        width: 14px;
+        height: 2px;
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+
+.dot-line {
+    background: var(--accent);
+}
+
+.dot-goal {
+    background: var(--ink-soft);
+    opacity: 0.6;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}

@@ -1,8 +1,321 @@
 @page "/profile"
+@using System.Globalization
+@using Application.Services
+@using Domain.Entities
+
+@inject ProfileService Profiles
 
 <h1 class="page-title">Min profil</h1>
 
-<div class="stub">
-    <p>Kaloriemål och kostpreferenser.</p>
-    <a class="stub-link" href="foods">Mina råvaror →</a>
-</div>
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+@if (isLoading)
+{
+    <p class="muted">Laddar...</p>
+}
+else if (profile is null || isEditing)
+{
+    <div class="add-card">
+        <h2 class="add-title">@(profile is null ? "Kom igång" : "Redigera profil")</h2>
+
+        <label class="field">
+            <span>Namn</span>
+            <input @bind="form.Name" placeholder="Valfritt" />
+        </label>
+
+        <label class="field">
+            <span>Kön</span>
+            <select @bind="form.Sex">
+                <option value="@Sex.Female">Kvinna</option>
+                <option value="@Sex.Male">Man</option>
+                <option value="@Sex.Unspecified">Vill inte ange</option>
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Födelsedatum</span>
+            <input type="date" @bind="form.BirthDate" />
+        </label>
+
+        <label class="field">
+            <span>Längd i cm</span>
+            <input type="number" min="80" max="250" @bind="form.HeightInCm" />
+        </label>
+
+        <label class="field">
+            <span>Startvikt i kg</span>
+            <input type="number" step="0.1" min="20" @bind="form.StartWeightKg" />
+        </label>
+
+        <label class="field">
+            <span>Målvikt i kg (valfritt)</span>
+            <input type="number" step="0.1" min="20" @bind="form.GoalWeightKg" />
+        </label>
+
+        <label class="field">
+            <span>Aktivitetsnivå</span>
+            <select @bind="form.Activity">
+                <option value="@ActivityLevel.Sedentary">Stillasittande</option>
+                <option value="@ActivityLevel.Light">Lätt aktiv, 1–3 pass/vecka</option>
+                <option value="@ActivityLevel.Moderate">Måttligt aktiv, 3–5 pass/vecka</option>
+                <option value="@ActivityLevel.Active">Aktiv, 6–7 pass/vecka</option>
+                <option value="@ActivityLevel.VeryActive">Mycket aktiv</option>
+            </select>
+        </label>
+
+        <label class="field">
+            <span>Dagligt kaloriemål (lämna tomt för förslag)</span>
+            <input type="number" min="800" @bind="form.DailyCalorieGoal" />
+        </label>
+
+        <div class="btn-row">
+            @if (profile is not null)
+            {
+                <button class="btn-secondary" @onclick="CancelEdit">Avbryt</button>
+            }
+            <button class="btn-primary" @onclick="SaveProfile" disabled="@(form.HeightInCm <= 0)">
+                Spara
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span class="stat-value">@CurrentWeight.ToString("0.#", Inv)</span>
+            <span class="stat-label">kg nu</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value @(Delta <= 0 ? "down" : "up")">
+                @(Delta > 0 ? "+" : "")@Delta.ToString("0.#", Inv)
+            </span>
+            <span class="stat-label">kg sedan start</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">@EffectiveGoal</span>
+            <span class="stat-label">kcal/dag</span>
+        </div>
+    </div>
+
+    @if (profile.DailyCalorieGoal is null)
+    {
+        <p class="muted small center">
+            Förslaget bygger på @Bmr kcal grundomsättning och din aktivitetsnivå.
+        </p>
+    }
+    else if (ProfileService.IsGoalTooLow(profile, CurrentWeight))
+    {
+        <div class="banner-warn">
+            Ditt mål ligger under din grundomsättning på @Bmr kcal. Under längre tid
+            gör det oftast mer skada än nytta — överväg att höja det, eller stäm av
+            med en dietist eller läkare.
+        </div>
+    }
+
+    <div class="add-card">
+        <h2 class="add-title">Väg in</h2>
+
+        <div class="weigh-row">
+            <input type="date" @bind="newDate" />
+            <input type="number" step="0.1" min="20" @bind="newWeight" placeholder="kg" />
+            <button class="btn-add" @onclick="AddWeighIn">+</button>
+        </div>
+
+        @if (trend.Count >= 2)
+        {
+            <div class="chart-wrap">
+                <svg viewBox="0 0 320 130" preserveAspectRatio="none" class="chart">
+                    @if (GoalY is double gy)
+                    {
+                        <line x1="0" y1="@F(gy)" x2="320" y2="@F(gy)"
+                              class="chart-goal" stroke-dasharray="4 4" />
+                    }
+
+                    <polyline points="@TrendPoints" class="chart-line" />
+
+                    @foreach (var p in RawPoints)
+                    {
+                        <circle cx="@F(p.X)" cy="@F(p.Y)" r="2.5" class="chart-dot" />
+                    }
+                </svg>
+
+                <div class="chart-legend">
+                    <span><i class="dot-line"></i> 7-dagars snitt</span>
+                    @if (profile.GoalWeightKg is double g)
+                    {
+                        <span><i class="dot-goal"></i> mål @g.ToString("0.#", Inv) kg</span>
+                    }
+                </div>
+            </div>
+        }
+        else if (trend.Count == 1)
+        {
+            <p class="muted small">Väg in några dagar till så ritas en kurva här.</p>
+        }
+    </div>
+
+    @if (recent.Count > 0)
+    {
+        <div class="meal-group">
+            <div class="meal-group-head"><span>Senaste invägningar</span></div>
+            @foreach (var w in recent)
+            {
+                <div class="meal-row">
+                    <div>
+                        <div class="meal-name">@w.WeightKg.ToString("0.#", Inv) kg</div>
+                        <div class="meal-sub">@w.Date.ToString("d MMM", Sv)</div>
+                    </div>
+                    <button class="del-btn" @onclick="() => DeleteWeighIn(w.Id)"
+                            aria-label="Ta bort">
+                        ×
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    <button class="btn-secondary" @onclick="StartEdit">Redigera profil</button>
+}
+
+@code {
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+    private static readonly CultureInfo Sv = new("sv-SE");
+
+    private UserProfile? profile;
+    private UserProfile form = new();
+    private List<WeighIn> weighIns = new();
+    private List<TrendPoint> trend = new();
+    private List<WeighIn> recent = new();
+
+    private bool isLoading = true;
+    private bool isEditing;
+    private string? errorMessage;
+
+    private DateOnly newDate = DateOnly.FromDateTime(DateTime.Today);
+    private double newWeight;
+
+    private double CurrentWeight => weighIns.Count > 0
+        ? weighIns[^1].WeightKg
+        : profile?.StartWeightKg ?? 0;
+
+    private double Delta => CurrentWeight - (profile?.StartWeightKg ?? CurrentWeight);
+
+    private int Bmr => profile is null ? 0 : ProfileService.CalculateBmr(profile, CurrentWeight);
+
+    private int EffectiveGoal => profile?.DailyCalorieGoal
+        ?? (profile is null ? 0 : ProfileService.SuggestGoal(profile, CurrentWeight));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+
+        profile = await Profiles.GetAsync();
+        weighIns = await Profiles.GetWeighInsAsync();
+        trend = ProfileService.BuildTrend(weighIns);
+        recent = weighIns.OrderByDescending(w => w.Date).Take(10).ToList();
+
+        if (profile is not null && newWeight == 0)
+            newWeight = Math.Round(CurrentWeight, 1);
+
+        isLoading = false;
+    }
+
+    private void StartEdit()
+    {
+        // Kopia, så Avbryt inte lämnar halvt ändrade värden kvar
+        form = new UserProfile
+        {
+            Id = profile!.Id,
+            Name = profile.Name,
+            Sex = profile.Sex,
+            BirthDate = profile.BirthDate,
+            HeightInCm = profile.HeightInCm,
+            StartWeightKg = profile.StartWeightKg,
+            GoalWeightKg = profile.GoalWeightKg,
+            Activity = profile.Activity,
+            DailyCalorieGoal = profile.DailyCalorieGoal
+        };
+        isEditing = true;
+    }
+
+    private void CancelEdit() => isEditing = false;
+
+    private async Task SaveProfile()
+    {
+        try
+        {
+            await Profiles.SaveAsync(form);
+            isEditing = false;
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task AddWeighIn()
+    {
+        try
+        {
+            await Profiles.AddWeighInAsync(newDate, newWeight);
+            errorMessage = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task DeleteWeighIn(Guid id)
+    {
+        await Profiles.DeleteWeighInAsync(id);
+        await LoadAsync();
+    }
+
+    // ----- Diagram -----
+    // Alla koordinater måste formateras med invariant kultur.
+    // Svensk kultur ger decimalkomma, vilket gör SVG:n ogiltig.
+
+    private static string F(double v) => v.ToString("0.#", Inv);
+
+    private (double Min, double Max) Range
+    {
+        get
+        {
+            var values = trend.Select(t => t.Raw).ToList();
+            if (profile?.GoalWeightKg is double g) values.Add(g);
+
+            double min = values.Min(), max = values.Max();
+            double pad = Math.Max(0.5, (max - min) * 0.15);
+            return (min - pad, max + pad);
+        }
+    }
+
+    private double ToY(double kg)
+    {
+        var (min, max) = Range;
+        double span = max - min;
+        if (span <= 0) return 65;
+        return 120 - (kg - min) / span * 110;
+    }
+
+    private double ToX(int index) =>
+        trend.Count <= 1 ? 160 : 5 + (double)index / (trend.Count - 1) * 310;
+
+    private string TrendPoints => string.Join(" ",
+        trend.Select((t, i) => $"{F(ToX(i))},{F(ToY(t.Average))}"));
+
+    private IEnumerable<(double X, double Y)> RawPoints =>
+        trend.Select((t, i) => (ToX(i), ToY(t.Raw)));
+
+    private double? GoalY => profile?.GoalWeightKg is double g ? ToY(g) : null;
+}

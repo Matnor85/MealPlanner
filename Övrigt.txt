@@ -1,3 +1,20 @@
+=== FIXA TILL ===
+Sorterings val för recept fliken.
+
+istället för enbart en droplista vill jag kunna skriva i den för att enklare hitta ex. äpple så när jag skriver "äpp" så serterar den
+bort allt som inte har "äpp" i sig.
+
+möjlighet att lägga till mer till inköpslistan
+
+på recept/inköpslista att man även kan lägga till att man kan lägga till vad man har hemma och sedan visa vad man kan laga på de man har hemma.
+
+fixa till Profil sidan.
+
+=== FIXAT ===
+start sidan: lägga kopiera till nästa vecka knapp lägga den längst ner istället.
+
+
+
 Enums/
 
     Fasta listor av värden (t.ex. DayOfWeek är redan inbyggt i C#, men du kanske vill ha en MealType enum med frukost, lunch, middag).
