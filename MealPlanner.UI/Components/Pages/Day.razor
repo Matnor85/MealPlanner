@@ -30,8 +30,8 @@ else
         <h2 class="add-title">Lägg till måltid</h2>
 
         <div class="segmented">
-            <button class="seg @(useRecipe ? "" : "on")" @onclick="() => useRecipe = false">Råvara</button>
-            <button class="seg @(useRecipe ? "on" : "")" @onclick="() => useRecipe = true">Recept</button>
+            <button class="seg @(useRecipe ? "" : "on")" @onclick="() => SwitchMode(false)">Råvara</button>
+            <button class="seg @(useRecipe ? "on" : "")" @onclick="() => SwitchMode(true)">Recept</button>
         </div>
 
         <label class="field">
@@ -46,22 +46,18 @@ else
 
         @if (useRecipe)
         {
-            @if (recipes.Count == 0)
+            @if (recipeItems.Count == 0)
             {
                 <p class="muted">Du har inga recept än. <a href="recipes">Skapa ett först →</a></p>
             }
             else
             {
-                <label class="field">
+                <div class="field">
                     <span>Recept</span>
-                    <select @bind="newRecipeId">
-                        <option value="">Välj...</option>
-                        @foreach (var r in recipes)
-                        {
-                            <option value="@r.Id">@r.Name (@r.CaloriesPerPortion kcal/port.)</option>
-                        }
-                    </select>
-                </label>
+                    <SearchPicker Items="recipeItems"
+                                  @bind-SelectedId="newRecipeId"
+                                  Placeholder="Sök recept..." />
+                </div>
 
                 <label class="field">
                     <span>Antal portioner</span>
@@ -71,16 +67,12 @@ else
         }
         else
         {
-            <label class="field">
+            <div class="field">
                 <span>Råvara</span>
-                <select @bind="newFoodId">
-                    <option value="">Välj...</option>
-                    @foreach (var f in foods)
-                    {
-                        <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
-                    }
-                </select>
-            </label>
+                <SearchPicker Items="foodItems"
+                              @bind-SelectedId="newFoodId"
+                              Placeholder="Sök råvara, t.ex. äpp..." />
+            </div>
 
             <label class="field">
                 <span>Vikt i gram</span>
@@ -139,18 +131,20 @@ else
     private DailyPlan? day;
     private List<FoodItem> foods = new();
     private List<Recipe> recipes = new();
+    private List<PickerItem> foodItems = new();
+    private List<PickerItem> recipeItems = new();
     private string? errorMessage;
 
     private bool useRecipe;
     private MealType newType = MealType.Breakfast;
-    private string newFoodId = "";
+    private Guid? newFoodId;
     private int newGrams = 100;
-    private string newRecipeId = "";
+    private Guid? newRecipeId;
     private double newPortions = 1;
 
     private bool CanAdd => useRecipe
-        ? !string.IsNullOrEmpty(newRecipeId) && newPortions > 0
-        : !string.IsNullOrEmpty(newFoodId) && newGrams > 0;
+        ? newRecipeId.HasValue && newPortions > 0
+        : newFoodId.HasValue && newGrams > 0;
 
     private int PreviewCalories
     {
@@ -158,13 +152,11 @@ else
         {
             if (useRecipe)
             {
-                if (!Guid.TryParse(newRecipeId, out var rid)) return 0;
-                var r = recipes.FirstOrDefault(x => x.Id == rid);
+                var r = recipes.FirstOrDefault(x => x.Id == newRecipeId);
                 return r is null ? 0 : (int)Math.Round(r.CaloriesPerPortion * newPortions);
             }
 
-            if (!Guid.TryParse(newFoodId, out var fid)) return 0;
-            var f = foods.FirstOrDefault(x => x.Id == fid);
+            var f = foods.FirstOrDefault(x => x.Id == newFoodId);
             return f is null ? 0 : (int)Math.Round((double)f.CaloriesPer100g * newGrams / 100);
         }
     }
@@ -173,6 +165,15 @@ else
     {
         foods = (await FoodRepo.GetAllAsync()).ToList();
         recipes = (await RecipeRepo.GetAllAsync()).ToList();
+
+        foodItems = foods
+            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
+            .ToList();
+
+        recipeItems = recipes
+            .Select(r => new PickerItem(r.Id, r.Name, $"{r.CaloriesPerPortion} kcal/port."))
+            .ToList();
+
         await LoadAsync();
     }
 
@@ -182,22 +183,29 @@ else
         day = week.Days.FirstOrDefault(d => d.SortOrder == Sort);
     }
 
+    private void SwitchMode(bool recipeMode)
+    {
+        useRecipe = recipeMode;
+        newFoodId = null;
+        newRecipeId = null;
+    }
+
     private async Task Add()
     {
         if (day is null) return;
 
         try
         {
-            if (useRecipe && Guid.TryParse(newRecipeId, out var rid))
+            if (useRecipe && newRecipeId is Guid rid)
             {
                 await PlannerService.AddRecipeMealAsync(day.Id, newType, rid, newPortions);
-                newRecipeId = "";
+                newRecipeId = null;
                 newPortions = 1;
             }
-            else if (!useRecipe && Guid.TryParse(newFoodId, out var fid))
+            else if (!useRecipe && newFoodId is Guid fid)
             {
                 await PlannerService.AddMealAsync(day.Id, newType, fid, newGrams);
-                newFoodId = "";
+                newFoodId = null;
                 newGrams = 100;
             }
 

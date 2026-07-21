@@ -1,57 +1,41 @@
+
 === FIXA TILL ===
+--- Recept ---
 Sorterings val för recept fliken.
 
-istället för enbart en droplista vill jag kunna skriva i den för att enklare hitta ex. äpple så när jag skriver "äpp" så serterar den
-bort allt som inte har "äpp" i sig.
+När man ska skapa ett nytt recep får det nog bli en egen "ny" flik där man kan lägga till nya råvaror också istället för att enbart
+kunna välja de som redan finns inlagda. sendan så får man lägga till hur man ska tillaga rätten steg för steg.
+--- Veckodag ---
 
+
+--- Vecka ---
+Kopiera till nästa vecka vill jag nog ha kopiera till valfri vecka istället. att man kan markera vilken vecka/veckor man önskar.
+
+--- Inköpslista ---
 möjlighet att lägga till mer till inköpslistan
 
+--- Undersöka mer ---
 på recept/inköpslista att man även kan lägga till att man kan lägga till vad man har hemma och sedan visa vad man kan laga på de man har hemma.
 
+--- Profil ---
 fixa till Profil sidan.
+
+
 
 === FIXAT ===
 start sidan: lägga kopiera till nästa vecka knapp lägga den längst ner istället.
 
-
-
-Enums/
-
-    Fasta listor av värden (t.ex. DayOfWeek är redan inbyggt i C#, men du kanske vill ha en MealType enum med frukost, lunch, middag).
+istället för enbart en droplista vill jag kunna skriva i den för att enklare hitta ex. äpple så när jag skriver "äpp" så serterar den
+bort allt som inte har "äpp" i sig.
 
 
 
 
 
-namespace Domain.Entities;
+=== Förslag ==
 
-public class Meal
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
+Noterat — hela filer som standard från och med nu, med filsökvägen alltid utskriven ovanför. Snuttar använder jag bara när jag vill peka på något specifikt, och då säger jag vilken fil de kommer ifrån och att det är en förklaring, inte något du ska klistra in.
 
-    // Främmande nyckel till dagen måltiden tillhör
-    public Guid DailyPlanId { get; set; }
+Var vi står just nu: veckovy, dagvy med råvaror och recept, råvarubibliotek med kategorifilter, receptsida med utkastsläge, receptdetalj med redigeringsläge, lagningsläge med avbockning, inköpslista och profil med graf. Det som fortfarande ligger löst är kopplingen mellan profilens kaloriemål och veckovyn — dagarna visar en siffra men färgas inte mot målet. Och GramsPerPiece på FoodItem, så inköpslistan kan skriva "ca 4 ägg" i stället för "220 g".
 
-    // Standard är mellanmål om inget väljs
-    public MealType Type { get; set; } = MealType.Snack;
-
-    // Främmande nyckel till råvaran. Nullable = måltiden kan finnas
-    // innan användaren hunnit välja vad som ska ätas.
-    public Guid? FoodId { get; set; }
-    public FoodItem? Food { get; set; }
-
-    public int WeightInGrams { get; set; }
-
-    public int CalculatedCalories =>
-        Food is null ? 0 : (int)Math.Round((double)Food.CaloriesPer100g * WeightInGrams / 100);
-
-    public bool ContainsLactose => Food?.Lactose ?? false;
-
-    public bool ContainsGluten => Food?.Gluten ?? false;
-    
-    public bool IsVegan => Food?.Vegan ?? false;
-    
-    public bool ContainsMilkPowder => Food?.MilkPowder ?? false;
-    
-    public bool ContainsNuts => Food?.Nuts ?? false;
-}
+Säg vad du vill ta härnäst.

@@ -1,0 +1,177 @@
+<div class="combo @(isOpen ? "open" : "")" @onfocusout="OnFocusOut">
+    <div class="combo-field">
+        <input class="combo-input"
+               value="@text"
+               @oninput="OnInput"
+               @onfocus="OnFocus"
+               @onkeydown="OnKeyDown"
+               placeholder="@Placeholder"
+               autocomplete="off" />
+
+        @if (SelectedId.HasValue)
+        {
+            <button class="combo-clear" @onclick="Clear"
+                    @onmousedown:preventDefault
+                    aria-label="Rensa">
+                ×
+            </button>
+        }
+        else
+        {
+            <span class="combo-arrow" aria-hidden="true">▾</span>
+        }
+    </div>
+
+    @if (isOpen)
+    {
+        <div class="combo-menu">
+            @if (Matches.Count == 0)
+            {
+                <div class="combo-empty">Inget matchar ”@text”</div>
+            }
+            else
+            {
+                @for (int i = 0; i < Matches.Count; i++)
+                {
+                    var item = Matches[i];
+                    var index = i;
+
+                    <button class="combo-option @(index == highlight ? "hi" : "")"
+                            @onmousedown:preventDefault
+                            @onclick="() => Select(item.Id)">
+                        <span class="combo-label">@item.Label</span>
+                        @if (item.Sub is not null)
+                        {
+                            <span class="combo-sub">@item.Sub</span>
+                        }
+                    </button>
+                }
+
+                @if (HiddenCount > 0)
+                {
+                    <div class="combo-more">+@HiddenCount till — skriv mer för att smalna av</div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PickerItem> Items { get; set; } = Array.Empty<PickerItem>();
+    [Parameter] public Guid? SelectedId { get; set; }
+    [Parameter] public EventCallback<Guid?> SelectedIdChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Sök...";
+    [Parameter] public int MaxResults { get; set; } = 8;
+
+    private string text = "";
+    private bool isOpen;
+    private int highlight;
+
+    // Filtrerar på fritext. Träffar som BÖRJAR på söktexten hamnar överst,
+    // så "äpp" ger Äpple före Rödbetsäppelsallad.
+    private List<PickerItem> Filtered
+    {
+        get
+        {
+            var q = text.Trim();
+
+            // Är något valt och texten är exakt det valet visas hela listan,
+            // annars kan man inte bläddra vidare utan att först radera.
+            if (SelectedId.HasValue &&
+                Items.FirstOrDefault(i => i.Id == SelectedId)?.Label == q)
+            {
+                q = "";
+            }
+
+            return Items
+                .Where(i => q.Length == 0
+                         || i.Label.Contains(q, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(i => i.Label.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(i => i.Label, StringComparer.CurrentCulture)
+                .ToList();
+        }
+    }
+
+    private List<PickerItem> Matches => Filtered.Take(MaxResults).ToList();
+
+    private int HiddenCount => Math.Max(0, Filtered.Count - MaxResults);
+
+    // Håller textrutan i synk om värdet sätts utifrån, t.ex. vid nollställning
+    protected override void OnParametersSet()
+    {
+        if (SelectedId is null && !isOpen)
+            text = "";
+        else if (SelectedId is Guid id && !isOpen)
+            text = Items.FirstOrDefault(i => i.Id == id)?.Label ?? "";
+    }
+
+    private void OnFocus()
+    {
+        isOpen = true;
+        highlight = 0;
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        text = e.Value?.ToString() ?? "";
+        isOpen = true;
+        highlight = 0;
+    }
+
+    // Stänger menyn när fokus lämnar hela komponenten. Optionerna kör
+    // preventDefault på mousedown så att klicket hinner registreras först.
+    private void OnFocusOut()
+    {
+        isOpen = false;
+
+        if (SelectedId is Guid id)
+            text = Items.FirstOrDefault(i => i.Id == id)?.Label ?? "";
+        else
+            text = "";
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (!isOpen && e.Key is "ArrowDown" or "ArrowUp")
+        {
+            isOpen = true;
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                highlight = Math.Min(highlight + 1, Matches.Count - 1);
+                break;
+
+            case "ArrowUp":
+                highlight = Math.Max(highlight - 1, 0);
+                break;
+
+            case "Enter":
+                if (isOpen && highlight < Matches.Count)
+                    await Select(Matches[highlight].Id);
+                break;
+
+            case "Escape":
+                isOpen = false;
+                break;
+        }
+    }
+
+    private async Task Select(Guid id)
+    {
+        SelectedId = id;
+        text = Items.FirstOrDefault(i => i.Id == id)?.Label ?? "";
+        isOpen = false;
+        await SelectedIdChanged.InvokeAsync(id);
+    }
+
+    private async Task Clear()
+    {
+        SelectedId = null;
+        text = "";
+        isOpen = true;
+        await SelectedIdChanged.InvokeAsync(null);
+    }
+}

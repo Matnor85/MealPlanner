@@ -60,21 +60,15 @@ else
             </div>
         }
 
-        <div class="ing-add">
-            <select @bind="pickFoodId">
-                <option value="">Välj råvara...</option>
-                @foreach (var f in foods)
-                {
-                    <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
-                }
-            </select>
+        <div class="ing-picker">
+            <SearchPicker Items="foodItems"
+                          @bind-SelectedId="pickFoodId"
+                          Placeholder="Sök råvara, t.ex. äpp..." />
 
-            <input type="number" min="1" @bind="pickGrams" placeholder="gram" class="gram-input" />
-
-            <button class="btn-add" @onclick="AddToDraft"
-                    disabled="@string.IsNullOrEmpty(pickFoodId)">
-                +
-            </button>
+            <div class="ing-add-row">
+                <input type="number" min="1" @bind="pickGrams" placeholder="gram" class="gram-input" />
+                <button class="btn-add" @onclick="AddToDraft" disabled="@(!pickFoodId.HasValue)">+</button>
+            </div>
         </div>
 
         <div class="btn-row">
@@ -113,6 +107,7 @@ else
 
     private List<Recipe> recipes = new();
     private List<FoodItem> foods = new();
+    private List<PickerItem> foodItems = new();
     private string? errorMessage;
 
     private bool isCreating;
@@ -120,7 +115,7 @@ else
     private int portions = 4;
     private readonly List<DraftIngredient> draft = new();
 
-    private string pickFoodId = "";
+    private Guid? pickFoodId;
     private int pickGrams = 100;
 
     private int DraftTotalCalories =>
@@ -129,6 +124,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         foods = (await FoodRepo.GetAllAsync()).ToList();
+
+        foodItems = foods
+            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
+            .ToList();
+
         await LoadAsync();
     }
 
@@ -139,7 +139,7 @@ else
         isCreating = true;
         name = ""; portions = 4;
         draft.Clear();
-        pickFoodId = ""; pickGrams = 100;
+        pickFoodId = null; pickGrams = 100;
         errorMessage = null;
     }
 
@@ -151,7 +151,7 @@ else
 
     private void AddToDraft()
     {
-        if (!Guid.TryParse(pickFoodId, out var id) || pickGrams <= 0) return;
+        if (pickFoodId is not Guid id || pickGrams <= 0) return;
 
         var food = foods.FirstOrDefault(f => f.Id == id);
         if (food is null) return;
@@ -167,7 +167,8 @@ else
             draft.Add(new DraftIngredient(food, pickGrams));
         }
 
-        pickFoodId = ""; pickGrams = 100;
+        pickFoodId = null;
+        pickGrams = 100;
     }
 
     private async Task Save()

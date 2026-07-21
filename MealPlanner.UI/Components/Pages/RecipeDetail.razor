@@ -41,16 +41,12 @@ else
         <div class="add-card">
             <h2 class="add-title">Lägg till ingrediens</h2>
 
-            <label class="field">
+            <div class="field">
                 <span>Råvara</span>
-                <select @bind="newFoodId">
-                    <option value="">Välj...</option>
-                    @foreach (var f in foods)
-                    {
-                        <option value="@f.Id">@f.Name (@f.CaloriesPer100g kcal/100 g)</option>
-                    }
-                </select>
-            </label>
+                <SearchPicker Items="foodItems"
+                              @bind-SelectedId="newFoodId"
+                              Placeholder="Sök råvara..." />
+            </div>
 
             <label class="field">
                 <span>Mängd i gram (för hela receptet)</span>
@@ -58,7 +54,7 @@ else
             </label>
 
             <button class="btn-primary" @onclick="AddIngredient"
-                    disabled="@string.IsNullOrEmpty(newFoodId)">
+                    disabled="@(!newFoodId.HasValue)">
                 Lägg till
             </button>
         </div>
@@ -149,18 +145,24 @@ else
 
     private Recipe? recipe;
     private List<FoodItem> foods = new();
+    private List<PickerItem> foodItems = new();
     private string? errorMessage;
 
     private bool isEditing;
     private Guid? pendingDeleteId;
     private bool confirmDeleteRecipe;
 
-    private string newFoodId = "";
+    private Guid? newFoodId;
     private int newGrams = 100;
 
     protected override async Task OnInitializedAsync()
     {
         foods = (await FoodRepo.GetAllAsync()).ToList();
+
+        foodItems = foods
+            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
+            .ToList();
+
         await LoadAsync();
     }
 
@@ -181,7 +183,7 @@ else
 
     private async Task AddIngredient()
     {
-        if (!Guid.TryParse(newFoodId, out var foodId)) return;
+        if (newFoodId is not Guid foodId) return;
 
         await RecipeRepo.AddIngredientAsync(new RecipeIngredient
         {
@@ -190,7 +192,8 @@ else
             WeightInGrams = newGrams
         });
 
-        newFoodId = ""; newGrams = 100;
+        newFoodId = null;
+        newGrams = 100;
         await LoadAsync();
     }
 
