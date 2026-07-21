@@ -1,0 +1,289 @@
+@page "/recipes/import"
+@using Application.Services
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject RecipeImportService Importer
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick='() => Nav.NavigateTo("/recipes")'>‹ Recept</button>
+
+<h1 class="page-title">Importera recept</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+@if (!Importer.IsConfigured)
+{
+    <div class="banner-warn">
+        Ingen API-nyckel angiven. Hämta en gratis på aistudio.google.com
+        och lägg in den i <code>ApiKeys.Gemini</code>.
+    </div>
+}
+
+@if (isWorking)
+{
+    <div class="stub">
+        <p>Läser receptet...</p>
+        <p class="muted small">Det tar oftast fem till tio sekunder.</p>
+    </div>
+}
+else if (draft is null)
+{
+    <div class="add-card">
+        <h2 class="add-title">Välj källa</h2>
+
+        <button class="btn-primary" @onclick="TakePhoto" disabled="@(!Importer.IsConfigured)">
+            📷 Fotografera receptet
+        </button>
+
+        <button class="btn-secondary" @onclick="PickPhoto" disabled="@(!Importer.IsConfigured)">
+            🖼️ Välj bild från galleriet
+        </button>
+    </div>
+
+    <div class="add-card">
+        <h2 class="add-title">Eller klistra in text</h2>
+        <p class="muted small">
+            Recept från sociala medier ligger ofta i bildtexten. Då blir
+            inklistrad text både snabbare och mer träffsäker än en skärmdump.
+        </p>
+
+        <label class="field">
+            <textarea rows="6" @bind="pastedText"
+                      placeholder="Klistra in receptet här..."></textarea>
+        </label>
+
+        <button class="btn-primary" @onclick="ReadText"
+                disabled="@(!Importer.IsConfigured || string.IsNullOrWhiteSpace(pastedText))">
+            Läs receptet
+        </button>
+    </div>
+}
+else
+{
+    <div class="add-card">
+        <h2 class="add-title">Granska innan du sparar</h2>
+
+        <label class="field">
+            <span>Namn</span>
+            <input @bind="draft.Name" />
+        </label>
+
+        <label class="field">
+            <span>Antal portioner</span>
+            <input type="number" min="1" @bind="draft.Portions" />
+        </label>
+    </div>
+
+    @if (draft.UncertainCount > 0)
+    {
+        <div class="banner-warn">
+            @draft.UncertainCount @(draft.UncertainCount == 1 ? "ingrediens" : "ingredienser")
+            är osäkert matchade och markerade nedan. Kontrollera dem innan du sparar.
+        </div>
+    }
+
+    <div class="meal-group">
+        <div class="meal-group-head">
+            <span>Ingredienser</span>
+            <span>@draft.MatchedCount av @draft.Ingredients.Count matchade</span>
+        </div>
+
+        @foreach (var row in draft.Ingredients)
+        {
+            <div class="import-row @(row.IsMatched ? "" : "unmatched") @(row.IsUncertain ? "uncertain" : "")">
+                <input type="checkbox" @bind="row.Include" disabled="@(!row.IsMatched)" />
+
+                <div class="import-info">
+                    <div class="import-raw">
+                        @row.RawName <span class="muted">@row.AmountText</span>
+                    </div>
+
+                    <button class="import-match" @onclick="() => ToggleOpen(row)">
+                        @row.MatchLabel
+                        <span class="tag @(row.ExistingFoodId.HasValue ? "" : "warn")">@row.MatchSource</span>
+                        @if (row.Alternatives.Count > 1)
+                        {
+                            <span class="import-change">byt</span>
+                        }
+                    </button>
+                </div>
+
+                <div class="import-grams">
+                    <input type="number" min="0" step="1" @bind="row.Grams" />
+                    <span class="unit-sm">g</span>
+                </div>
+            </div>
+
+            @if (openRow == row)
+            {
+                <div class="import-alts">
+                    @foreach (var alt in row.Alternatives)
+                    {
+                        <button class="import-alt @(alt.Name == row.MatchedName ? "on" : "")"
+                                @onclick="() => Choose(row, alt)">
+                            @alt.Name
+                            <span class="muted small">@(alt.OwnFoodId.HasValue ? "egen" : "ny")</span>
+                        </button>
+                    }
+                    <button class="import-alt skip" @onclick="() => Skip(row)">
+                        Hoppa över den här
+                    </button>
+                </div>
+            }
+        }
+
+        @if (draft.UnmatchedCount > 0)
+        {
+            <div class="meal-row">
+                <span class="muted small">
+                    @draft.UnmatchedCount ingredienser kunde inte matchas och hoppas över.
+                    Lägg till dem för hand efteråt.
+                </span>
+            </div>
+        }
+    </div>
+
+    <div class="meal-group">
+        <div class="meal-group-head">
+            <span>Gör så här</span>
+            <span>@draft.Steps.Count steg</span>
+        </div>
+
+        @foreach (var step in draft.Steps)
+        {
+            <div class="meal-row step-row">
+                <div class="step-row-body">
+                    <span class="step-inline-num">@step.Number.</span> @step.Text
+                    @if (step.Minutes is int m)
+                    {
+                        <span class="step-time"> ~@m min</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="btn-row">
+        <button class="btn-secondary" @onclick="Reset">Börja om</button>
+        <button class="btn-primary" @onclick="Save" disabled="@isSaving">
+            @(isSaving ? "Sparar..." : "Spara receptet")
+        </button>
+    </div>
+}
+
+@code {
+    private RecipeImportDraft? draft;
+    private IngredientDraft? openRow;
+    private bool isWorking;
+    private bool isSaving;
+    private string? errorMessage;
+    private string pastedText = "";
+
+    private void ToggleOpen(IngredientDraft row) =>
+        openRow = openRow == row ? null : row;
+
+    private void Choose(IngredientDraft row, MatchCandidate candidate)
+    {
+        row.Apply(candidate);
+        openRow = null;
+    }
+
+    private void Skip(IngredientDraft row)
+    {
+        row.Clear();
+        openRow = null;
+    }
+
+    private async Task TakePhoto()
+    {
+        if (!MediaPicker.Default.IsCaptureSupported)
+        {
+            errorMessage = "Enheten har ingen kamera tillgänglig.";
+            return;
+        }
+
+        var photo = await MediaPicker.Default.CapturePhotoAsync();
+        await ReadPhoto(photo);
+    }
+
+    private async Task PickPhoto()
+    {
+        var photo = await MediaPicker.Default.PickPhotoAsync();
+        await ReadPhoto(photo);
+    }
+
+    private async Task ReadPhoto(FileResult? photo)
+    {
+        if (photo is null) return;   // användaren avbröt
+
+        isWorking = true;
+        errorMessage = null;
+
+        try
+        {
+            await using var stream = await photo.OpenReadAsync();
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+
+            string mime = photo.ContentType is { Length: > 0 } ct ? ct : "image/jpeg";
+
+            draft = await Importer.FromImageAsync(memory.ToArray(), mime);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isWorking = false;
+        }
+    }
+
+    private async Task ReadText()
+    {
+        isWorking = true;
+        errorMessage = null;
+
+        try
+        {
+            draft = await Importer.FromTextAsync(pastedText);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isWorking = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (draft is null) return;
+
+        isSaving = true;
+        try
+        {
+            var id = await Importer.SaveAsync(draft);
+            Nav.NavigateTo($"/recipe/{id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            isSaving = false;
+        }
+    }
+
+    private void Reset()
+    {
+        draft = null;
+        openRow = null;
+        pastedText = "";
+        errorMessage = null;
+    }
+}

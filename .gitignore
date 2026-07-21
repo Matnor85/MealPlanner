@@ -361,3 +361,13 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ----- Projektspecifikt -----
+
+# API-nycklar - får ALDRIG hamna på GitHub
+MealPlanner.UI/ApiKeys.cs
+
+# Lokal utvecklingsdatabas
+*.db
+*.db-shm
+*.db-wal

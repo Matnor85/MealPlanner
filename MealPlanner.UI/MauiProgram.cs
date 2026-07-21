@@ -52,6 +52,16 @@ public static class MauiProgram
         builder.Services.AddScoped<PantryService>();
         builder.Services.AddScoped<RecipeSuggestionService>();
 
+        // ---- Receptimport -----
+        // Receptimport via bildtolkning. Nyckeln ligger tills vidare i appen -
+        // flytta anropen till en backend innan appen delas med någon.
+        builder.Services.AddSingleton<IRecipeImporter>(_ =>
+            new GeminiRecipeImporter(
+                new HttpClient { Timeout = TimeSpan.FromSeconds(60) },
+                ApiKeys.Gemini));
+
+        builder.Services.AddScoped<RecipeImportService>();
+
         // ----- Näringsuppslag -----
 
         // Lokal fil i stället för Livsmedelsverkets API, som returnerar

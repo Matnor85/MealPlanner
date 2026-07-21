@@ -16,6 +16,10 @@
     </button>
 </div>
 
+<button class="btn-secondary" @onclick='() => Nav.NavigateTo("/recipes/import")'>
+    📷 Importera från bild eller text
+</button>
+
 @if (recipes.Count == 0)
 {
     <div class="stub mt-16">Inga recept än.</div>

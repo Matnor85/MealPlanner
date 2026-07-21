@@ -26,6 +26,12 @@ public class LocalNutritionDatabase : INutritionLookup
         return rows.Count;
     }
 
+    public async Task<IReadOnlyList<NutritionSearchHit>> GetAllAsync(CancellationToken ct = default)
+    {
+        var rows = await EnsureLoadedAsync(ct);
+        return rows.Select(r => new NutritionSearchHit(r.Id, r.N)).ToList();
+    }
+
     public async Task<IReadOnlyList<NutritionSearchHit>> SearchAsync(
         string query, CancellationToken ct = default)
     {
@@ -38,8 +44,7 @@ public class LocalNutritionDatabase : INutritionLookup
         return rows
             .Where(r => r.N.Contains(q, StringComparison.OrdinalIgnoreCase))
             // Exakt namn först, sedan de som börjar på söktexten,
-            // sist de där träffen ligger inne i namnet. Kortare namn
-            // före längre - "Apelsin" före "Apelsinjuice konc. frysvara".
+            // sist de där träffen ligger inne i namnet.
             .OrderBy(r => r.N.Equals(q, StringComparison.OrdinalIgnoreCase) ? 0
                         : r.N.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 1
                         : 2)

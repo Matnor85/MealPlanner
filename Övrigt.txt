@@ -1,6 +1,8 @@
 
 === FIXA TILL ===
 --- Recept ---
+kunna ändra i recepten som namn som blivit felstavade eller fellästa av AI.
+
 Sorterings val för recept fliken.
 
 När man ska skapa ett nytt recep får det nog bli en egen "ny" flik där man kan lägga till nya råvaror också istället för att enbart

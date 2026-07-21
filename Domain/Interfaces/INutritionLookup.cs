@@ -8,6 +8,10 @@ public interface INutritionLookup
 {
     Task<IReadOnlyList<NutritionSearchHit>> SearchAsync(string query, CancellationToken ct = default);
 
+    // Hela databasen. Används av importen, som poängsätter alla kandidater
+    // själv i stället för att lita på sökningens ordning.
+    Task<IReadOnlyList<NutritionSearchHit>> GetAllAsync(CancellationToken ct = default);
+
     Task<NutritionLookupResult?> GetAsync(string externalId, CancellationToken ct = default);
 
     // Antal poster i källan. Används för felsökning - noll betyder att
