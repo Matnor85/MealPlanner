@@ -80,7 +80,11 @@
 
     private string text = "";
     private bool isOpen;
-    private int highlight;
+
+    // -1 = ingenting markerat. Markeringen ska dyka upp först när man
+    // faktiskt navigerar med piltangenter, annars ser det ut som att
+    // appen valt första raden åt användaren.
+    private int highlight = -1;
 
     // Filtrerar på fritext. Träffar som BÖRJAR på söktexten hamnar överst,
     // så "äpp" ger Äpple före Rödbetsäppelsallad.
@@ -123,14 +127,14 @@
     private void OnFocus()
     {
         isOpen = true;
-        highlight = 0;
+        highlight = -1;
     }
 
     private void OnInput(ChangeEventArgs e)
     {
         text = e.Value?.ToString() ?? "";
         isOpen = true;
-        highlight = 0;
+        highlight = -1;
     }
 
     // Stänger menyn när fokus lämnar hela komponenten. Optionerna kör
@@ -138,6 +142,7 @@
     private void OnFocusOut()
     {
         isOpen = false;
+        highlight = -1;
 
         if (SelectedId is Guid id)
             text = Items.FirstOrDefault(i => i.Id == id)?.Label ?? "";
@@ -150,6 +155,7 @@
         if (!isOpen && e.Key is "ArrowDown" or "ArrowUp")
         {
             isOpen = true;
+            highlight = 0;
             return;
         }
 
@@ -164,12 +170,13 @@
                 break;
 
             case "Enter":
-                if (isOpen && highlight < Matches.Count)
+                if (isOpen && highlight >= 0 && highlight < Matches.Count)
                     await Select(Matches[highlight].Id);
                 break;
 
             case "Escape":
                 isOpen = false;
+                highlight = -1;
                 break;
         }
     }
@@ -177,6 +184,7 @@
     private async Task RaiseCreate()
     {
         isOpen = false;
+        highlight = -1;
         await OnCreate.InvokeAsync(text.Trim());
     }
 
@@ -185,6 +193,7 @@
         SelectedId = id;
         text = Items.FirstOrDefault(i => i.Id == id)?.Label ?? "";
         isOpen = false;
+        highlight = -1;
         await SelectedIdChanged.InvokeAsync(id);
     }
 
@@ -193,6 +202,7 @@
         SelectedId = null;
         text = "";
         isOpen = true;
+        highlight = -1;
         await SelectedIdChanged.InvokeAsync(null);
     }
 }

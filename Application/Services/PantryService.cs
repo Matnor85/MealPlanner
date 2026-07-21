@@ -13,11 +13,11 @@ public class PantryService
     {
         var items = (await _pantry.GetAllAsync()).ToList();
 
-        // Utgångna först, sedan de som snart går ut, därefter alfabetiskt.
-        // Poängen är att det som brådskar syns utan att man letar.
+        // Mest brådskande först, därefter alfabetiskt. Poängen är att det
+        // som håller på att gå ut syns utan att man letar.
         return items
-            .OrderBy(i => i.BestBefore is null ? 1 : 0)
-            .ThenBy(i => i.BestBefore)
+            .OrderByDescending(i => i.Expiry)
+            .ThenBy(i => i.BestBefore ?? DateOnly.MaxValue)
             .ThenBy(i => i.Food?.Name, StringComparer.CurrentCulture)
             .ToList();
     }

@@ -1,3 +1,8 @@
+/* ==========================================================================
+   Matplaneraren
+   Ordning: variabler, skal, sidor i navigeringsordning, komponenter, hjälp
+   ========================================================================== */
+
 :root {
     --bg: #f6f4ef;
     --surface: #ffffff;
@@ -7,6 +12,9 @@
     --accent: #2f6b4f;
     --accent-soft: #e8f0ea;
     --danger: #b3392f;
+    --warn-bg: #fff4e0;
+    --warn-line: #f0c98a;
+    --warn-ink: #8a5a00;
     --radius: 14px;
 }
 
@@ -22,7 +30,9 @@ html, body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* ----- Skal och navigering ----- */
+/* ==========================================================================
+   Skal och navigering
+   ========================================================================== */
 
 .app-shell {
     display: flex;
@@ -87,7 +97,18 @@ html, body {
     display: block;
 }
 
-/* ----- Veckovy ----- */
+/* Fem flikar behöver mindre text för att inte radbrytas */
+.tab-bar.five .tab-label {
+    font-size: 0.66rem;
+}
+
+.tab-bar.five .tab-icon {
+    font-size: 1.15rem;
+}
+
+/* ==========================================================================
+   Veckovy
+   ========================================================================== */
 
 .week-header {
     background: var(--surface);
@@ -123,28 +144,16 @@ html, body {
     font-weight: 550;
 }
 
-.icon-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid var(--line);
-    background: var(--bg);
-    font-size: 1.4rem;
-    line-height: 1;
-    color: var(--ink);
-    cursor: pointer;
-}
-
 .week-total {
     text-align: center;
     margin: 18px 0 0;
 }
 
 .big-number {
+    display: block;
     font-size: 2.4rem;
     font-weight: 300;
     letter-spacing: -0.03em;
-    display: block;
 }
 
 .unit {
@@ -153,9 +162,9 @@ html, body {
 }
 
 .unit-sm {
+    display: block;
     color: var(--ink-soft);
     font-size: 0.7rem;
-    display: block;
 }
 
 .sub {
@@ -186,8 +195,8 @@ html, body {
 }
 
 .day-name {
-    font-weight: 550;
     display: block;
+    font-weight: 550;
 }
 
 .day-meals {
@@ -204,17 +213,9 @@ html, body {
     font-weight: 500;
 }
 
-/* ----- Dagvy ----- */
-
-.back-link {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-size: 0.9rem;
-    padding: 0 0 12px;
-    cursor: pointer;
-    font-family: inherit;
-}
+/* ==========================================================================
+   Dagvy och måltidslistor
+   ========================================================================== */
 
 .day-header {
     display: flex;
@@ -224,9 +225,9 @@ html, body {
 }
 
 .day-title {
+    margin: 0;
     font-size: 1.6rem;
     font-weight: 600;
-    margin: 0;
     letter-spacing: -0.02em;
 }
 
@@ -255,6 +256,11 @@ html, body {
     color: var(--accent);
 }
 
+    .meal-group-head.warn {
+        background: var(--warn-bg);
+        color: var(--warn-ink);
+    }
+
 .meal-row {
     display: flex;
     justify-content: space-between;
@@ -282,7 +288,9 @@ html, body {
     font-variant-numeric: tabular-nums;
 }
 
-/* ----- Formulär ----- */
+/* ==========================================================================
+   Formulär
+   ========================================================================== */
 
 .add-card {
     background: var(--surface);
@@ -293,9 +301,9 @@ html, body {
 }
 
 .add-title {
+    margin: 0 0 14px;
     font-size: 0.95rem;
     font-weight: 600;
-    margin: 0 0 14px;
 }
 
 .field {
@@ -320,6 +328,33 @@ html, body {
         color: var(--ink);
         font-family: inherit;
     }
+
+    .field textarea {
+        width: 100%;
+        padding: 11px 12px;
+        font-size: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: inherit;
+        resize: vertical;
+        line-height: 1.5;
+    }
+
+        .field textarea:focus,
+        .field input:focus,
+        .field select:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: var(--surface);
+        }
+
+.macro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 10px;
+}
 
 .preview {
     text-align: right;
@@ -377,7 +412,50 @@ html, body {
     background: var(--bg);
 }
 
-/* ----- Sökbar droplista ----- */
+.inline-form {
+    margin-top: 14px;
+    padding: 15px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.inline-form-head {
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+}
+
+.inline-form .field input,
+.inline-form .field select {
+    background: var(--surface);
+}
+
+.toggle-row {
+    margin-bottom: 14px;
+}
+
+.toggle {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 0;
+    font-size: 0.87rem;
+    cursor: pointer;
+}
+
+    .toggle input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent);
+    }
+
+/* ==========================================================================
+   Sökbar droplista
+   ========================================================================== */
 
 .combo {
     position: relative;
@@ -449,6 +527,36 @@ html, body {
     -webkit-overflow-scrolling: touch;
 }
 
+.combo-create {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 11px 13px;
+    text-align: left;
+    background: var(--accent-soft);
+    border: none;
+    border-bottom: 1px solid var(--line);
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 550;
+    cursor: pointer;
+}
+
+.combo-create-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
 .combo-option {
     display: flex;
     justify-content: space-between;
@@ -467,7 +575,7 @@ html, body {
     .combo-option:last-of-type {
         border-bottom: none;
     }
-
+    /* Markeras bara vid tangentbordsnavigering, aldrig direkt när menyn öppnas */
     .combo-option.hi {
         background: var(--accent-soft);
     }
@@ -493,12 +601,14 @@ html, body {
     border-top: 1px solid var(--line);
 }
 
-/* ----- Råvaror ----- */
+/* ==========================================================================
+   Råvaror
+   ========================================================================== */
 
 .page-title {
+    margin: 0 0 16px;
     font-size: 1.6rem;
     font-weight: 600;
-    margin: 0 0 16px;
     letter-spacing: -0.02em;
 }
 
@@ -550,6 +660,11 @@ html, body {
     border-radius: var(--radius);
 }
 
+.food-main {
+    flex: 1;
+    min-width: 0;
+}
+
 .food-name {
     font-weight: 500;
 }
@@ -558,6 +673,26 @@ html, body {
     color: var(--ink-soft);
     font-size: 0.78rem;
     margin-top: 2px;
+}
+
+.macro-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+}
+
+.kcal-badge {
+    color: var(--ink);
+    font-weight: 550;
+}
+
+.macro-line .per {
+    opacity: 0.7;
 }
 
 .tag {
@@ -570,15 +705,202 @@ html, body {
     font-size: 0.7rem;
 }
 
-/* ----- Recept ----- */
+    .tag.danger {
+        background: #fdeceb;
+        color: var(--danger);
+    }
+
+    .tag.warn {
+        background: var(--warn-bg);
+        color: var(--warn-ink);
+    }
+
+/* ==========================================================================
+   Skafferi
+   ========================================================================== */
+
+.pantry-item {
+    border-top: 1px solid var(--line);
+}
+
+.pantry-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+}
+
+.pantry-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pantry-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.amount-btn {
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--bg);
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+}
+
+    .amount-btn:active {
+        background: var(--accent-soft);
+        color: var(--accent);
+    }
+
+/* Bäst före visas först inom en vecka, och trappas sedan i färg */
+.expiry {
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+    .expiry.soon {
+        border-color: var(--line);
+        color: var(--ink-soft);
+    }
+
+    .expiry.warning {
+        background: var(--warn-bg);
+        border-color: var(--warn-line);
+        color: var(--warn-ink);
+    }
+
+    .expiry.critical {
+        background: #fdeceb;
+        border-color: #e8a49e;
+        color: var(--danger);
+    }
+
+    .expiry.expired {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+        font-weight: 550;
+    }
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.step-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    /* Hindrar att långtryck markerar text eller öppnar kontextmeny */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+    .step-btn:active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+    }
+
+.pantry-edit {
+    padding: 4px 16px 14px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+}
+
+.edit-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+}
+
+.edit-label {
+    flex: 0 0 66px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.edit-line .gram-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.edit-line .unit-select {
+    flex: 0 0 72px;
+}
+
+.pantry-edit .btn-row {
+    margin-top: 12px;
+}
+
+.date-input {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 12px;
+    font-size: 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+}
+
+.amount-row {
+    display: flex;
+    gap: 7px;
+    margin-bottom: 6px;
+}
+
+    .amount-row .gram-input {
+        flex: 1;
+    }
+
+.unit-select {
+    flex: 0 0 88px;
+    padding: 11px 8px;
+    font-size: 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: inherit;
+}
+
+/* ==========================================================================
+   Recept
+   ========================================================================== */
 
 .ing-head {
+    margin: 6px 0 8px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--ink-soft);
-    margin: 6px 0 8px;
 }
 
 .ing-row {
@@ -647,6 +969,72 @@ html, body {
         color: var(--ink-soft);
     }
 
+.draft-step {
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+    padding: 11px 0;
+    border-top: 1px solid var(--line);
+}
+
+.draft-step-num {
+    flex: 0 0 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.draft-step-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.draft-step-text {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.draft-step-tools {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.move-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+    .move-btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+    }
+
+.step-row {
+    align-items: flex-start;
+}
+
+.step-row-body {
+    flex: 1;
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
 .edit-banner {
     display: flex;
     justify-content: space-between;
@@ -681,7 +1069,125 @@ html, body {
     font-size: 0.88rem;
 }
 
-/* ----- Lagningsläge ----- */
+/* ==========================================================================
+   Receptförslag
+   ========================================================================== */
+
+.section-head {
+    margin: 20px 0 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+}
+
+.suggest-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 15px 17px;
+    margin-bottom: 9px;
+    cursor: pointer;
+}
+
+    .suggest-card.ready {
+        border-color: var(--accent);
+    }
+
+.suggest-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.suggest-name {
+    font-weight: 550;
+}
+
+.suggest-meta {
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    margin-top: 2px;
+}
+
+.suggest-percent {
+    font-size: 1.3rem;
+    font-weight: 300;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+    .suggest-percent .pct {
+        font-size: 0.8rem;
+        color: var(--ink-soft);
+        margin-left: 1px;
+    }
+
+.coverage-wrap {
+    height: 4px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 11px 0 9px;
+}
+
+.coverage-bar {
+    height: 100%;
+    background: var(--accent);
+}
+
+.swap-list {
+    margin-bottom: 7px;
+}
+
+.swap-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 0;
+    font-size: 0.8rem;
+}
+
+.swap-from {
+    color: var(--ink-soft);
+    text-decoration: line-through;
+}
+
+.swap-arrow {
+    color: var(--ink-soft);
+    opacity: 0.6;
+}
+
+.swap-to {
+    color: var(--accent);
+    font-weight: 550;
+}
+
+.missing-list {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.6;
+}
+
+    .missing-list.ok {
+        color: var(--accent);
+    }
+
+.missing-item {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 8px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+/* ==========================================================================
+   Lagningsläge
+   ========================================================================== */
 
 .cook-head {
     margin-bottom: 14px;
@@ -714,16 +1220,6 @@ html, body {
     font-size: 0.82rem;
     color: var(--ink-soft);
     margin-bottom: 16px;
-}
-
-.link-btn {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-family: inherit;
-    font-size: 0.82rem;
-    cursor: pointer;
-    padding: 0;
 }
 
 .steps {
@@ -807,7 +1303,9 @@ html, body {
     font-weight: 550;
 }
 
-/* ----- Inköpslista ----- */
+/* ==========================================================================
+   Inköpslista
+   ========================================================================== */
 
 .shop-summary {
     margin: 0 0 12px;
@@ -844,7 +1342,35 @@ html, body {
     color: var(--ink-soft);
 }
 
-/* ----- Profil ----- */
+.have-note {
+    display: block;
+    font-size: 0.72rem;
+    opacity: 0.75;
+    margin-top: 1px;
+}
+
+.extra-add {
+    display: flex;
+    gap: 7px;
+    padding: 11px 16px;
+    border-top: 1px solid var(--line);
+}
+
+    .extra-add input {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: inherit;
+    }
+
+/* ==========================================================================
+   Profil
+   ========================================================================== */
 
 .stat-grid {
     display: flex;
@@ -956,7 +1482,9 @@ html, body {
     opacity: 0.6;
 }
 
-/* ----- Knappar ----- */
+/* ==========================================================================
+   Knappar
+   ========================================================================== */
 
 .btn-primary {
     width: 100%;
@@ -1012,6 +1540,23 @@ html, body {
         margin-top: 0;
     }
 
+    .btn-row.top {
+        margin-top: 0;
+        margin-bottom: 4px;
+    }
+
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--ink);
+    cursor: pointer;
+}
+
 .del-btn {
     width: 30px;
     height: 30px;
@@ -1030,7 +1575,37 @@ html, body {
         font-size: 0.95rem;
     }
 
-/* ----- Hjälpklasser ----- */
+.back-link {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.9rem;
+    padding: 0 0 12px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+    .link-btn.block {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+        text-align: center;
+        font-size: 0.87rem;
+    }
+
+/* ==========================================================================
+   Hjälpklasser och tillstånd
+   ========================================================================== */
 
 .muted {
     color: var(--ink-soft);
@@ -1080,8 +1655,8 @@ html, body {
 }
 
 .banner-warn {
-    background: #fff6e0;
-    color: #8a5a00;
+    background: var(--warn-bg);
+    color: var(--warn-ink);
     padding: 12px 15px;
     border-radius: 10px;
     margin-bottom: 14px;
@@ -1105,468 +1680,4 @@ html, body {
         position: absolute;
         right: 0.75rem;
         top: 0.5rem;
-    }
-
-.field textarea {
-    width: 100%;
-    padding: 11px 12px;
-    font-size: 1rem;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: inherit;
-    resize: vertical;
-    line-height: 1.5;
-}
-
-    .field textarea:focus {
-        outline: none;
-        border-color: var(--accent);
-        background: var(--surface);
-    }
-
-.link-btn.block {
-    display: block;
-    width: 100%;
-    padding: 10px 0;
-    text-align: center;
-    font-size: 0.87rem;
-}
-
-.inline-form {
-    margin-top: 14px;
-    padding: 15px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-}
-
-.inline-form-head {
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--ink-soft);
-    margin-bottom: 12px;
-}
-
-.inline-form .field input, .inline-form .field select {
-    background: var(--surface);
-}
-
-.draft-step {
-    display: flex;
-    gap: 11px;
-    align-items: flex-start;
-    padding: 11px 0;
-    border-top: 1px solid var(--line);
-}
-
-.draft-step-num {
-    flex: 0 0 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--accent-soft);
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-
-.draft-step-body {
-    flex: 1;
-    min-width: 0;
-}
-
-.draft-step-text {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.45;
-}
-
-.draft-step-tools {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-shrink: 0;
-}
-
-.move-btn {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    color: var(--ink-soft);
-    font-size: 0.8rem;
-    line-height: 1;
-    cursor: pointer;
-}
-
-    .move-btn:disabled {
-        opacity: 0.35;
-        cursor: default;
-    }
-
-.step-row {
-    align-items: flex-start;
-}
-
-.step-row-body {
-    flex: 1;
-    font-size: 0.92rem;
-    line-height: 1.5;
-}
-
-.food-main {
-    flex: 1;
-    min-width: 0;
-}
-
-.macro-line {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 9px;
-    align-items: center;
-    margin-top: 4px;
-    font-size: 0.78rem;
-    color: var(--ink-soft);
-    font-variant-numeric: tabular-nums;
-}
-
-.kcal-badge {
-    color: var(--ink);
-    font-weight: 550;
-}
-
-.macro-line .per {
-    opacity: 0.7;
-}
-
-.macro-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 10px;
-}
-
-.tab-bar.five .tab-label {
-    font-size: 0.66rem;
-}
-
-.tab-bar.five .tab-icon {
-    font-size: 1.15rem;
-}
-
-.amount-row {
-    display: flex;
-    gap: 7px;
-    margin-bottom: 6px;
-}
-
-    .amount-row .gram-input {
-        flex: 1;
-    }
-
-.unit-select {
-    flex: 0 0 88px;
-    padding: 11px 8px;
-    font-size: 0.95rem;
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    background: var(--bg);
-    color: var(--ink);
-    font-family: inherit;
-}
-
-.meal-group-head.warn {
-    background: #fff6e0;
-    color: #8a5a00;
-}
-
-.tag.danger {
-    background: #fdeceb;
-    color: var(--danger);
-}
-
-.section-head {
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--ink-soft);
-    margin: 20px 0 10px;
-}
-
-.suggest-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 15px 17px;
-    margin-bottom: 9px;
-    cursor: pointer;
-}
-
-    .suggest-card.ready {
-        border-color: var(--accent);
-    }
-
-.suggest-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.suggest-name {
-    font-weight: 550;
-}
-
-.suggest-meta {
-    color: var(--ink-soft);
-    font-size: 0.78rem;
-    margin-top: 2px;
-}
-
-.suggest-percent {
-    font-size: 1.3rem;
-    font-weight: 300;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-    .suggest-percent .pct {
-        font-size: 0.8rem;
-        color: var(--ink-soft);
-        margin-left: 1px;
-    }
-
-.coverage-wrap {
-    height: 4px;
-    background: var(--line);
-    border-radius: 2px;
-    overflow: hidden;
-    margin: 11px 0 9px;
-}
-
-.coverage-bar {
-    height: 100%;
-    background: var(--accent);
-}
-
-.missing-list {
-    font-size: 0.8rem;
-    color: var(--ink-soft);
-    line-height: 1.6;
-}
-
-    .missing-list.ok {
-        color: var(--accent);
-    }
-
-.missing-item {
-    display: inline-block;
-    margin-left: 5px;
-    padding: 1px 8px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    font-size: 0.75rem;
-}
-
-.tag.warn {
-    background: #fff6e0;
-    color: #8a5a00;
-}
-
-.toggle-row {
-    margin-bottom: 14px;
-}
-
-.toggle {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 7px 0;
-    font-size: 0.87rem;
-    cursor: pointer;
-}
-
-    .toggle input {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--accent);
-    }
-
-.have-note {
-    display: block;
-    font-size: 0.72rem;
-    opacity: 0.75;
-    margin-top: 1px;
-}
-
-.extra-add {
-    display: flex;
-    gap: 7px;
-    padding: 11px 16px;
-    border-top: 1px solid var(--line);
-}
-
-    .extra-add input {
-        flex: 1;
-        min-width: 0;
-        padding: 10px 12px;
-        font-size: 0.95rem;
-        border: 1px solid var(--line);
-        border-radius: 9px;
-        background: var(--bg);
-        color: var(--ink);
-        font-family: inherit;
-    }
-
-.btn-row.top {
-    margin-top: 0;
-    margin-bottom: 4px;
-}
-
-.swap-list {
-    margin-bottom: 7px;
-}
-
-.swap-row {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 5px 0;
-    font-size: 0.8rem;
-}
-
-.swap-from {
-    color: var(--ink-soft);
-    text-decoration: line-through;
-}
-
-.swap-arrow {
-    color: var(--ink-soft);
-    opacity: 0.6;
-}
-
-.swap-to {
-    color: var(--accent);
-    font-weight: 550;
-}
-
-.combo-create {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    width: 100%;
-    padding: 11px 13px;
-    text-align: left;
-    background: var(--accent-soft);
-    border: none;
-    border-bottom: 1px solid var(--line);
-    color: var(--accent);
-    font-family: inherit;
-    font-size: 0.9rem;
-    font-weight: 550;
-    cursor: pointer;
-}
-
-.combo-create-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
-    font-size: 0.9rem;
-    line-height: 1;
-}
-
-.pantry-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    padding: 11px 16px;
-    border-top: 1px solid var(--line);
-}
-
-.pantry-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.amount-btn {
-    margin-top: 3px;
-    padding: 3px 9px;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    background: var(--bg);
-    color: var(--ink-soft);
-    font-family: inherit;
-    font-size: 0.8rem;
-    cursor: pointer;
-    font-variant-numeric: tabular-nums;
-}
-
-    .amount-btn:active {
-        background: var(--accent-soft);
-        color: var(--accent);
-    }
-
-.stepper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
-.step-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    border: 1px solid var(--line);
-    background: var(--bg);
-    color: var(--ink);
-    font-size: 1.2rem;
-    line-height: 1;
-    cursor: pointer;
-    /* Hindrar att långtryck markerar text eller öppnar kontextmeny */
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    touch-action: manipulation;
-}
-
-    .step-btn:active {
-        background: var(--accent-soft);
-        border-color: var(--accent);
-    }
-
-.edit-amount {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-    .edit-amount .gram-input {
-        width: 72px;
-        flex: none;
-    }
-
-    .edit-amount .unit-select {
-        flex: 0 0 68px;
-    }
-
-    .edit-amount .btn-add {
-        flex: 0 0 38px;
-        height: 40px;
-        font-size: 1rem;
     }
