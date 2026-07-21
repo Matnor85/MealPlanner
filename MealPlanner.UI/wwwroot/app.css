@@ -1681,3 +1681,66 @@ html, body {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+.lookup-box {
+    margin-bottom: 13px;
+}
+
+.lookup-btn {
+    margin-top: 0;
+}
+
+.lookup-list {
+    margin-top: 9px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--bg);
+}
+
+.lookup-hit {
+    display: block;
+    width: 100%;
+    padding: 10px 13px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--ink);
+}
+
+    .lookup-hit:last-child {
+        border-bottom: none;
+    }
+
+    .lookup-hit:active {
+        background: var(--accent-soft);
+        color: var(--accent);
+    }
+
+.lookup-applied {
+    margin-top: 9px;
+    padding: 9px 12px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 9px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+
+.lookup-missing {
+    display: block;
+    color: var(--warn-ink);
+    margin-top: 3px;
+}
+
+.attribution {
+    margin: 24px 0 0;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    opacity: 0.8;
+}

@@ -2,6 +2,7 @@
 using Domain.Entities;
 using Domain.Interfaces;
 using Infrastructure.Data;
+using Infrastructure.External;
 using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,8 @@ public static class MauiProgram
         builder.Services.AddDbContextFactory<AppDbContext>(options =>
             options.UseSqlite($"Filename={dbPath}"));
 
+        // ----- Repositories -----
+
         builder.Services.AddScoped<IWeeklyPlanRepository, WeeklyPlanRepository>();
         builder.Services.AddScoped<IFoodItemRepository, FoodItemRepository>();
         builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
@@ -41,11 +44,21 @@ public static class MauiProgram
         builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
         builder.Services.AddScoped<IPantryRepository, PantryRepository>();
 
+        // ----- Tjänster -----
+
         builder.Services.AddScoped<WeeklyPlannerService>();
         builder.Services.AddScoped<ShoppingListService>();
         builder.Services.AddScoped<ProfileService>();
         builder.Services.AddScoped<PantryService>();
         builder.Services.AddScoped<RecipeSuggestionService>();
+
+        // ----- Näringsuppslag -----
+
+        // Lokal fil i stället för Livsmedelsverkets API, som returnerar
+        // noll poster. Singleton eftersom filen läses in i minnet en gång.
+        builder.Services.AddSingleton<INutritionLookup>(_ =>
+            new LocalNutritionDatabase(
+                () => FileSystem.OpenAppPackageFileAsync("livsmedel.json")));
 
         var app = builder.Build();
 

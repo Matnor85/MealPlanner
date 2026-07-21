@@ -3,6 +3,7 @@
 @using Domain.Interfaces
 
 @inject IFoodItemRepository FoodRepo
+@inject INutritionLookup Lookup
 @inject NavigationManager Nav
 
 <button class="back-link" @onclick="Cancel">‹ Tillbaka</button>
@@ -17,8 +18,49 @@
 <div class="add-card">
     <label class="field">
         <span>Namn</span>
-        <input @bind="name" placeholder="t.ex. Keso" />
+        <input @bind="name" @bind:event="oninput" placeholder="t.ex. Keso" />
     </label>
+
+    <div class="lookup-box">
+        <button class="btn-secondary lookup-btn"
+                @onclick="Search"
+                disabled="@(isSearching || string.IsNullOrWhiteSpace(name))">
+            @(isSearching ? "Söker..." : "Hämta näringsvärden")
+        </button>
+
+        @if (hits is not null)
+        {
+            @if (hits.Count == 0)
+            {
+                <p class="muted small">
+                    Inga träffar på ”@lastQuery”. Prova ett enklare ord,
+                    eller fyll i värdena för hand.
+                </p>
+            }
+            else
+            {
+                <div class="lookup-list">
+                    @foreach (var hit in hits)
+                    {
+                        <button class="lookup-hit" @onclick="() => Apply(hit)">
+                            @hit.Name
+                        </button>
+                    }
+                </div>
+            }
+        }
+
+        @if (appliedFrom is not null)
+        {
+            <div class="lookup-applied">
+                Hämtat från ”@appliedFrom”.
+                @if (missingNote is not null)
+                {
+                    <span class="lookup-missing">Saknade värden: @missingNote — kontrollera dem.</span>
+                }
+            </div>
+        }
+    </div>
 
     <label class="field">
         <span>Kategori</span>
@@ -130,6 +172,8 @@
     </button>
 </div>
 
+<p class="attribution">@Lookup.Attribution</p>
+
 @code {
     // Förifylls med det man hunnit skriva i sökrutan
     [Parameter, SupplyParameterFromQuery(Name = "name")]
@@ -151,6 +195,13 @@
 
     private string? errorMessage;
 
+    // Näringsuppslag
+    private List<NutritionSearchHit>? hits;
+    private bool isSearching;
+    private string lastQuery = "";
+    private string? appliedFrom;
+    private string? missingNote;
+
     // Protein och kolhydrater ger 4 kcal/g, fett 9. Stämmer det inte alls
     // är någon siffra troligen felskriven.
     private int EstimatedCalories => (int)Math.Round(protein * 4 + carbs * 4 + fat * 9);
@@ -169,6 +220,68 @@
     {
         if (!string.IsNullOrWhiteSpace(PresetName))
             name = PresetName;
+    }
+
+    private async Task Search()
+    {
+        isSearching = true;
+        errorMessage = null;
+        lastQuery = name.Trim();
+
+        try
+        {
+            hits = (await Lookup.SearchAsync(lastQuery)).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Kunde inte söka: {ex.Message}. Fyll i för hand.";
+            hits = null;
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+    private async Task Apply(NutritionSearchHit hit)
+    {
+        try
+        {
+            var result = await Lookup.GetAsync(hit.ExternalId);
+            if (result is null)
+            {
+                errorMessage = "Hittade inga värden för den posten.";
+                return;
+            }
+
+            // Saknade värden lämnas orörda i stället för att sättas till noll -
+            // Livsmedelsverket varnar uttryckligen för den fallgropen.
+            if (result.CaloriesPer100g is double c) kcal = (int)Math.Round(c);
+            if (result.ProteinPer100g is double p) protein = Math.Round(p, 1);
+            if (result.FatPer100g is double f) fat = Math.Round(f, 1);
+            if (result.CarbsPer100g is double ch) carbs = Math.Round(ch, 1);
+            if (result.FiberPer100g is double fb) fiber = Math.Round(fb, 1);
+            if (result.SaltPer100g is double s) salt = Math.Round(s, 2);
+
+            // Kategorin sätts bara om användaren inte redan valt något
+            if (category == FoodCategory.Other && result.Category != FoodCategory.Other)
+            {
+                category = result.Category;
+                gramsPerDeciliter = Math.Round(FoodItem.DefaultDensity(category) * 100);
+            }
+
+            appliedFrom = result.Name;
+
+            var missing = result.MissingFields.ToList();
+            missingNote = missing.Count > 0 ? string.Join(", ", missing) : null;
+
+            hits = null;
+            errorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Kunde inte hämta värdena: {ex.Message}";
+        }
     }
 
     private void OnCategoryChanged(ChangeEventArgs e)
