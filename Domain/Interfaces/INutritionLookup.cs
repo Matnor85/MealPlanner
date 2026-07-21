@@ -2,13 +2,17 @@
 
 namespace Domain.Interfaces;
 
-// Port mot en extern näringsdatabas. Implementationen ligger i Infrastructure,
-// så att byte av leverantör bara rör en fil.
+// Port mot en näringsdatabas. Implementationen ligger i Infrastructure,
+// så att byte av källa bara rör en fil.
 public interface INutritionLookup
 {
     Task<IReadOnlyList<NutritionSearchHit>> SearchAsync(string query, CancellationToken ct = default);
 
     Task<NutritionLookupResult?> GetAsync(string externalId, CancellationToken ct = default);
+
+    // Antal poster i källan. Används för felsökning - noll betyder att
+    // datafilen inte gick att läsa.
+    Task<int> CountAsync(CancellationToken ct = default);
 
     // Källhänvisning som måste visas i appen enligt licensvillkoren
     string Attribution { get; }

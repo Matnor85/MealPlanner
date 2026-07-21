@@ -10,6 +10,8 @@ namespace Infrastructure.External;
 // så data kommer i stället från deras nedladdningsbara databas.
 public class LocalNutritionDatabase : INutritionLookup
 {
+    private const int MaxResults = 25;
+
     private readonly Func<Task<Stream>> _openFile;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private List<FoodRow>? _rows;
@@ -18,8 +20,11 @@ public class LocalNutritionDatabase : INutritionLookup
 
     public string Attribution => "Källa: Livsmedelsverkets livsmedelsdatabas, version 2026-07-01";
 
-    // Hur många poster som lästs in. 0 betyder att filen saknas eller är trasig.
-    public int LoadedCount => _rows?.Count ?? 0;
+    public async Task<int> CountAsync(CancellationToken ct = default)
+    {
+        var rows = await EnsureLoadedAsync(ct);
+        return rows.Count;
+    }
 
     public async Task<IReadOnlyList<NutritionSearchHit>> SearchAsync(
         string query, CancellationToken ct = default)
@@ -32,11 +37,14 @@ public class LocalNutritionDatabase : INutritionLookup
 
         return rows
             .Where(r => r.N.Contains(q, StringComparison.OrdinalIgnoreCase))
-            // Träffar som börjar på söktexten först, sedan kortast namn -
-            // "Apelsin" före "Apelsinsallad"
-            .OrderBy(r => r.N.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            // Exakt namn först, sedan de som börjar på söktexten,
+            // sist de där träffen ligger inne i namnet. Kortare namn
+            // före längre - "Apelsin" före "Apelsinjuice konc. frysvara".
+            .OrderBy(r => r.N.Equals(q, StringComparison.OrdinalIgnoreCase) ? 0
+                        : r.N.StartsWith(q, StringComparison.OrdinalIgnoreCase) ? 1
+                        : 2)
             .ThenBy(r => r.N.Length)
-            .Take(15)
+            .Take(MaxResults)
             .Select(r => new NutritionSearchHit(r.Id, r.N))
             .ToList();
     }
@@ -84,7 +92,7 @@ public class LocalNutritionDatabase : INutritionLookup
             }
             catch (Exception ex)
             {
-                // Tyst svälja detta vore förödande - man får noll träffar
+                // Att svälja detta vore förödande - man får noll träffar
                 // utan att förstå varför.
                 throw new InvalidOperationException(
                     "Kunde inte öppna livsmedel.json. Kontrollera att filen ligger i " +

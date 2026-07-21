@@ -2,6 +2,9 @@
   <Folder Name="/Solution Items/">
     <File Path="Övrigt.txt" />
   </Folder>
+  <Folder Name="/Solution Items/SaveForNow/">
+    <File Path="Infrastructure/External/LivsmedelsverketClient.cs" />
+  </Folder>
   <Project Path="Application/Application.csproj" />
   <Project Path="Domain/Domain.csproj" />
   <Project Path="Infrastructure/Infrastructure.csproj" />
