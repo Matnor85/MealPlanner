@@ -12,4 +12,8 @@ public interface IRecipeRepository
 
     Task AddIngredientAsync(RecipeIngredient ingredient);
     Task RemoveIngredientAsync(Guid ingredientId);
+
+    Task AddStepAsync(RecipeStep step);
+    Task RemoveStepAsync(Guid stepId);
+    Task MoveStepAsync(Guid stepId, int direction);
 }

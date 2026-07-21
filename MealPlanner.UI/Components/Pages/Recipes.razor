@@ -3,87 +3,17 @@
 @using Domain.Interfaces
 
 @inject IRecipeRepository RecipeRepo
-@inject IFoodItemRepository FoodRepo
 @inject NavigationManager Nav
 
 <h1 class="page-title">Recept</h1>
 
-@if (errorMessage is not null)
+<button class="btn-primary" @onclick='() => Nav.NavigateTo("/recipes/new")'>
+    Nytt recept
+</button>
+
+@if (recipes.Count == 0)
 {
-    <div class="banner-error">@errorMessage</div>
-}
-
-@if (!isCreating)
-{
-    <button class="btn-primary" @onclick="StartCreating">Nytt recept</button>
-}
-else
-{
-    <div class="add-card">
-        <h2 class="add-title">Nytt recept</h2>
-
-        <label class="field">
-            <span>Namn</span>
-            <input @bind="name" placeholder="t.ex. Havregrynsgröt" />
-        </label>
-
-        <label class="field">
-            <span>Antal portioner receptet ger</span>
-            <input type="number" min="1" @bind="portions" />
-        </label>
-
-        <div class="ing-head">Ingredienser</div>
-
-        @if (draft.Count == 0)
-        {
-            <p class="muted small">Inga ingredienser tillagda än.</p>
-        }
-        else
-        {
-            @foreach (var d in draft)
-            {
-                <div class="ing-row">
-                    <span>@d.Food.Name</span>
-                    <span class="ing-right">
-                        <span class="ing-amount">@d.Grams g</span>
-                        <button class="del-btn small" @onclick="() => draft.Remove(d)"
-                                aria-label="Ta bort">
-                            ×
-                        </button>
-                    </span>
-                </div>
-            }
-
-            <div class="draft-total">
-                @DraftTotalCalories kcal totalt ·
-                @(portions > 0 ? DraftTotalCalories / portions : 0) kcal/port.
-            </div>
-        }
-
-        <div class="ing-picker">
-            <SearchPicker Items="foodItems"
-                          @bind-SelectedId="pickFoodId"
-                          Placeholder="Sök råvara, t.ex. äpp..." />
-
-            <div class="ing-add-row">
-                <input type="number" min="1" @bind="pickGrams" placeholder="gram" class="gram-input" />
-                <button class="btn-add" @onclick="AddToDraft" disabled="@(!pickFoodId.HasValue)">+</button>
-            </div>
-        </div>
-
-        <div class="btn-row">
-            <button class="btn-secondary" @onclick="CancelCreating">Avbryt</button>
-            <button class="btn-primary" @onclick="Save"
-                    disabled="@(string.IsNullOrWhiteSpace(name) || draft.Count == 0)">
-                Spara recept
-            </button>
-        </div>
-    </div>
-}
-
-@if (recipes.Count == 0 && !isCreating)
-{
-    <div class="stub">Inga recept än.</div>
+    <div class="stub mt-16">Inga recept än.</div>
 }
 
 <div class="food-list mt-16">
@@ -92,7 +22,13 @@ else
         <button class="day-card" @onclick="() => Open(r.Id)">
             <div class="day-left">
                 <span class="day-name">@r.Name</span>
-                <span class="day-meals">@r.Ingredients.Count ingredienser · @r.Portions port.</span>
+                <span class="day-meals">
+                    @r.Ingredients.Count ingredienser · @r.Portions port.
+                    @if (r.Steps.Count > 0)
+                    {
+                        <text> · @r.Steps.Count steg</text>
+                    }
+                </span>
             </div>
             <div class="day-right">
                 <span class="day-kcal">@r.CaloriesPerPortion</span>
@@ -103,109 +39,11 @@ else
 </div>
 
 @code {
-    private record DraftIngredient(FoodItem Food, int Grams);
-
     private List<Recipe> recipes = new();
-    private List<FoodItem> foods = new();
-    private List<PickerItem> foodItems = new();
-    private string? errorMessage;
 
-    private bool isCreating;
-    private string name = "";
-    private int portions = 4;
-    private readonly List<DraftIngredient> draft = new();
-
-    private Guid? pickFoodId;
-    private int pickGrams = 100;
-
-    private int DraftTotalCalories =>
-        draft.Sum(d => (int)Math.Round((double)d.Food.CaloriesPer100g * d.Grams / 100));
-
-    protected override async Task OnInitializedAsync()
-    {
-        foods = (await FoodRepo.GetAllAsync()).ToList();
-
-        foodItems = foods
-            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
-            .ToList();
-
-        await LoadAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync() => recipes = (await RecipeRepo.GetAllAsync()).ToList();
-
-    private void StartCreating()
-    {
-        isCreating = true;
-        name = ""; portions = 4;
-        draft.Clear();
-        pickFoodId = null; pickGrams = 100;
-        errorMessage = null;
-    }
-
-    private void CancelCreating()
-    {
-        isCreating = false;
-        draft.Clear();
-    }
-
-    private void AddToDraft()
-    {
-        if (pickFoodId is not Guid id || pickGrams <= 0) return;
-
-        var food = foods.FirstOrDefault(f => f.Id == id);
-        if (food is null) return;
-
-        // Samma råvara två gånger blir en rad med summerad mängd
-        var existing = draft.FirstOrDefault(d => d.Food.Id == id);
-        if (existing is not null)
-        {
-            draft[draft.IndexOf(existing)] = existing with { Grams = existing.Grams + pickGrams };
-        }
-        else
-        {
-            draft.Add(new DraftIngredient(food, pickGrams));
-        }
-
-        pickFoodId = null;
-        pickGrams = 100;
-    }
-
-    private async Task Save()
-    {
-        try
-        {
-            var recipe = new Recipe
-            {
-                Name = name.Trim(),
-                Portions = Math.Max(1, portions)
-            };
-
-            // Sätt bara FoodId, aldrig Food-objektet. Annars försöker EF
-            // spara råvaran på nytt och du får dubbletter i FoodItems.
-            foreach (var d in draft)
-            {
-                recipe.Ingredients.Add(new RecipeIngredient
-                {
-                    RecipeId = recipe.Id,
-                    FoodId = d.Food.Id,
-                    WeightInGrams = d.Grams
-                });
-            }
-
-            await RecipeRepo.AddAsync(recipe);
-
-            isCreating = false;
-            draft.Clear();
-            await LoadAsync();
-
-            Nav.NavigateTo($"/recipe/{recipe.Id}");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
-        }
-    }
 
     private void Open(Guid id) => Nav.NavigateTo($"/recipe/{id}");
 }

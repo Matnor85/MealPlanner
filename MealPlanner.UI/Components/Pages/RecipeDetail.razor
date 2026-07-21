@@ -19,6 +19,11 @@ else
         <div class="day-total">@recipe.CaloriesPerPortion <span class="unit">kcal/port.</span></div>
     </section>
 
+    @if (recipe.Instructions is not null)
+    {
+        <p class="muted small">@recipe.Instructions</p>
+    }
+
     @if (errorMessage is not null)
     {
         <div class="banner-error">@errorMessage</div>
@@ -83,16 +88,16 @@ else
 
                     @if (isEditing)
                     {
-                        @if (pendingDeleteId == ing.Id)
+                        @if (pendingIngredientId == ing.Id)
                         {
                             <button class="confirm-btn" @onclick="() => RemoveIngredient(ing.Id)">
                                 Ta bort?
                             </button>
-                            <button class="link-btn" @onclick="() => pendingDeleteId = null">Nej</button>
+                            <button class="link-btn" @onclick="() => pendingIngredientId = null">Nej</button>
                         }
                         else
                         {
-                            <button class="del-btn" @onclick="() => pendingDeleteId = ing.Id"
+                            <button class="del-btn" @onclick="() => pendingIngredientId = ing.Id"
                                     aria-label="Ta bort">
                                 ×
                             </button>
@@ -103,24 +108,77 @@ else
         }
     </div>
 
-    @if (recipe.Steps.Count > 0)
-    {
-        <div class="meal-group">
-            <div class="meal-group-head">
-                <span>Gör så här</span>
-                <span>@recipe.TotalMinutes min</span>
-            </div>
-            @foreach (var s in recipe.Steps.OrderBy(s => s.StepNumber))
-            {
-                <div class="meal-row">
-                    <div><span class="step-inline-num">@s.StepNumber.</span> @s.Text</div>
-                </div>
-            }
+    <div class="meal-group">
+        <div class="meal-group-head">
+            <span>Gör så här</span>
+            <span>@recipe.TotalMinutes min</span>
         </div>
-    }
+
+        @if (recipe.Steps.Count == 0)
+        {
+            <div class="meal-row"><span class="muted">Inga steg än.</span></div>
+        }
+
+        @foreach (var s in recipe.Steps.OrderBy(s => s.StepNumber))
+        {
+            <div class="meal-row step-row">
+                <div class="step-row-body">
+                    <span class="step-inline-num">@s.StepNumber.</span> @s.Text
+                    @if (s.Minutes is int m)
+                    {
+                        <span class="step-time"> ~@m min</span>
+                    }
+                </div>
+
+                @if (isEditing)
+                {
+                    <div class="draft-step-tools">
+                        <button class="move-btn" @onclick="() => MoveStep(s.Id, -1)"
+                                aria-label="Flytta upp">
+                            ↑
+                        </button>
+                        <button class="move-btn" @onclick="() => MoveStep(s.Id, 1)"
+                                aria-label="Flytta ner">
+                            ↓
+                        </button>
+
+                        @if (pendingStepId == s.Id)
+                        {
+                            <button class="confirm-btn" @onclick="() => RemoveStep(s.Id)">Ta bort?</button>
+                        }
+                        else
+                        {
+                            <button class="del-btn small" @onclick="() => pendingStepId = s.Id"
+                                    aria-label="Ta bort">
+                                ×
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
 
     @if (isEditing)
     {
+        <div class="add-card">
+            <h2 class="add-title">Lägg till steg</h2>
+
+            <label class="field">
+                <span>Beskrivning</span>
+                <textarea rows="3" @bind="stepText"
+                          placeholder="t.ex. Låt såsen puttra utan lock."></textarea>
+            </label>
+
+            <div class="ing-add-row">
+                <input type="number" min="0" @bind="stepMinutes" placeholder="minuter" class="gram-input" />
+                <button class="btn-add" @onclick="AddStep"
+                        disabled="@string.IsNullOrWhiteSpace(stepText)">
+                    +
+                </button>
+            </div>
+        </div>
+
         @if (confirmDeleteRecipe)
         {
             <div class="danger-confirm">
@@ -149,11 +207,15 @@ else
     private string? errorMessage;
 
     private bool isEditing;
-    private Guid? pendingDeleteId;
+    private Guid? pendingIngredientId;
+    private Guid? pendingStepId;
     private bool confirmDeleteRecipe;
 
     private Guid? newFoodId;
     private int newGrams = 100;
+
+    private string stepText = "";
+    private int? stepMinutes;
 
     protected override async Task OnInitializedAsync()
     {
@@ -177,7 +239,8 @@ else
     private void StopEditing()
     {
         isEditing = false;
-        pendingDeleteId = null;
+        pendingIngredientId = null;
+        pendingStepId = null;
         confirmDeleteRecipe = false;
     }
 
@@ -200,7 +263,36 @@ else
     private async Task RemoveIngredient(Guid ingredientId)
     {
         await RecipeRepo.RemoveIngredientAsync(ingredientId);
-        pendingDeleteId = null;
+        pendingIngredientId = null;
+        await LoadAsync();
+    }
+
+    private async Task AddStep()
+    {
+        if (string.IsNullOrWhiteSpace(stepText)) return;
+
+        await RecipeRepo.AddStepAsync(new RecipeStep
+        {
+            RecipeId = Id,
+            Text = stepText.Trim(),
+            Minutes = stepMinutes is > 0 ? stepMinutes : null
+        });
+
+        stepText = "";
+        stepMinutes = null;
+        await LoadAsync();
+    }
+
+    private async Task RemoveStep(Guid stepId)
+    {
+        await RecipeRepo.RemoveStepAsync(stepId);
+        pendingStepId = null;
+        await LoadAsync();
+    }
+
+    private async Task MoveStep(Guid stepId, int direction)
+    {
+        await RecipeRepo.MoveStepAsync(stepId, direction);
         await LoadAsync();
     }
 

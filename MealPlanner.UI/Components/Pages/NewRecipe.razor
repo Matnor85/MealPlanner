@@ -1,0 +1,380 @@
+@page "/recipes/new"
+@using Domain.Entities
+@using Domain.Interfaces
+
+@inject IRecipeRepository RecipeRepo
+@inject IFoodItemRepository FoodRepo
+@inject NavigationManager Nav
+
+<button class="back-link" @onclick='() => Nav.NavigateTo("/recipes")'>‹ Recept</button>
+
+<h1 class="page-title">Nytt recept</h1>
+
+@if (errorMessage is not null)
+{
+    <div class="banner-error">@errorMessage</div>
+}
+
+<div class="add-card">
+    <h2 class="add-title">1. Grunduppgifter</h2>
+
+    <label class="field">
+        <span>Namn</span>
+        <input @bind="name" placeholder="t.ex. Havregrynsgröt" />
+    </label>
+
+    <label class="field">
+        <span>Antal portioner receptet ger</span>
+        <input type="number" min="1" @bind="portions" />
+    </label>
+
+    <label class="field">
+        <span>Anteckning (valfritt)</span>
+        <input @bind="instructions" placeholder="t.ex. blir bättre dagen efter" />
+    </label>
+</div>
+
+<div class="add-card">
+    <h2 class="add-title">2. Ingredienser</h2>
+
+    @if (draftIngredients.Count == 0)
+    {
+        <p class="muted small">Inga ingredienser tillagda än.</p>
+    }
+    else
+    {
+        @foreach (var d in draftIngredients)
+        {
+            <div class="ing-row">
+                <span>@d.Food.Name</span>
+                <span class="ing-right">
+                    <span class="ing-amount">@d.Grams g</span>
+                    <button class="del-btn small" @onclick="() => draftIngredients.Remove(d)"
+                            aria-label="Ta bort">
+                        ×
+                    </button>
+                </span>
+            </div>
+        }
+
+        <div class="draft-total">
+            @DraftTotalCalories kcal totalt ·
+            @(portions > 0 ? DraftTotalCalories / portions : 0) kcal/port.
+        </div>
+    }
+
+    @if (!isCreatingFood)
+    {
+        <div class="ing-picker">
+            <SearchPicker Items="foodItems"
+                          @bind-SelectedId="pickFoodId"
+                          Placeholder="Sök råvara, t.ex. äpp..." />
+
+            <div class="ing-add-row">
+                <input type="number" min="1" @bind="pickGrams" placeholder="gram" class="gram-input" />
+                <button class="btn-add" @onclick="AddToDraft" disabled="@(!pickFoodId.HasValue)">+</button>
+            </div>
+        </div>
+
+        <button class="link-btn block" @onclick="() => isCreatingFood = true">
+            + Råvaran saknas — skapa ny
+        </button>
+    }
+    else
+    {
+        <div class="inline-form">
+            <div class="inline-form-head">Ny råvara</div>
+
+            <label class="field">
+                <span>Namn</span>
+                <input @bind="newFoodName" placeholder="t.ex. Keso" />
+            </label>
+
+            <label class="field">
+                <span>Kalorier per 100 g</span>
+                <input type="number" min="0" @bind="newFoodKcal" />
+            </label>
+
+            <label class="field">
+                <span>Kategori</span>
+                <select @bind="newFoodCategory">
+                    @foreach (var c in Enum.GetValues<FoodCategory>())
+                    {
+                        <option value="@c">@ToSwedish(c)</option>
+                    }
+                </select>
+            </label>
+
+            <div class="chips">
+                <label class="chip"><input type="checkbox" @bind="nfVegan" /> Vegansk</label>
+                <label class="chip"><input type="checkbox" @bind="nfLactose" /> Laktos</label>
+                <label class="chip"><input type="checkbox" @bind="nfGluten" /> Gluten</label>
+                <label class="chip"><input type="checkbox" @bind="nfNuts" /> Nötter</label>
+                <label class="chip"><input type="checkbox" @bind="nfMilkPowder" /> Mjölkpulver</label>
+            </div>
+
+            <label class="field">
+                <span>Mängd i receptet (gram)</span>
+                <input type="number" min="1" @bind="newFoodGrams" />
+            </label>
+
+            <div class="btn-row">
+                <button class="btn-secondary" @onclick="CancelNewFood">Avbryt</button>
+                <button class="btn-primary" @onclick="SaveNewFood"
+                        disabled="@string.IsNullOrWhiteSpace(newFoodName)">
+                    Spara och lägg till
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="add-card">
+    <h2 class="add-title">3. Så här lagas den</h2>
+
+    @if (draftSteps.Count == 0)
+    {
+        <p class="muted small">Inga steg tillagda än.</p>
+    }
+    else
+    {
+        @for (int i = 0; i < draftSteps.Count; i++)
+        {
+            var index = i;
+            var s = draftSteps[i];
+
+            <div class="draft-step">
+                <div class="draft-step-num">@(index + 1)</div>
+                <div class="draft-step-body">
+                    <p class="draft-step-text">@s.Text</p>
+                    @if (s.Minutes is int m)
+                    {
+                        <span class="step-time">~@m min</span>
+                    }
+                </div>
+                <div class="draft-step-tools">
+                    <button class="move-btn" disabled="@(index == 0)"
+                            @onclick="() => MoveStep(index, -1)" aria-label="Flytta upp">
+                        ↑
+                    </button>
+                    <button class="move-btn" disabled="@(index == draftSteps.Count - 1)"
+                            @onclick="() => MoveStep(index, 1)" aria-label="Flytta ner">
+                        ↓
+                    </button>
+                    <button class="del-btn small" @onclick="() => draftSteps.RemoveAt(index)"
+                            aria-label="Ta bort">
+                        ×
+                    </button>
+                </div>
+            </div>
+        }
+    }
+
+    <label class="field mt-16">
+        <span>Steg @(draftSteps.Count + 1)</span>
+        <textarea rows="3" @bind="stepText"
+                  placeholder="t.ex. Fräs löken mjuk i olivolja utan att den tar färg."></textarea>
+    </label>
+
+    <div class="ing-add-row">
+        <input type="number" min="0" @bind="stepMinutes" placeholder="minuter" class="gram-input" />
+        <button class="btn-add" @onclick="AddStep"
+                disabled="@string.IsNullOrWhiteSpace(stepText)">
+            +
+        </button>
+    </div>
+</div>
+
+<button class="btn-primary" @onclick="Save" disabled="@(!CanSave)">
+    Spara receptet
+</button>
+<button class="btn-secondary" @onclick='() => Nav.NavigateTo("/recipes")'>Avbryt</button>
+
+@code {
+    private record DraftIngredient(FoodItem Food, int Grams);
+    private record DraftStep(string Text, int? Minutes);
+
+    private List<FoodItem> foods = new();
+    private List<PickerItem> foodItems = new();
+    private string? errorMessage;
+
+    // Grunduppgifter
+    private string name = "";
+    private int portions = 4;
+    private string instructions = "";
+
+    // Ingredienser
+    private readonly List<DraftIngredient> draftIngredients = new();
+    private Guid? pickFoodId;
+    private int pickGrams = 100;
+
+    // Ny råvara på plats
+    private bool isCreatingFood;
+    private string newFoodName = "";
+    private int newFoodKcal;
+    private FoodCategory newFoodCategory = FoodCategory.Other;
+    private bool nfVegan, nfLactose, nfGluten, nfNuts, nfMilkPowder;
+    private int newFoodGrams = 100;
+
+    // Steg
+    private readonly List<DraftStep> draftSteps = new();
+    private string stepText = "";
+    private int? stepMinutes;
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(name) && draftIngredients.Count > 0;
+
+    private int DraftTotalCalories =>
+        draftIngredients.Sum(d => (int)Math.Round((double)d.Food.CaloriesPer100g * d.Grams / 100));
+
+    protected override async Task OnInitializedAsync() => await LoadFoodsAsync();
+
+    private async Task LoadFoodsAsync()
+    {
+        foods = (await FoodRepo.GetAllAsync()).ToList();
+        foodItems = foods
+            .Select(f => new PickerItem(f.Id, f.Name, $"{f.CaloriesPer100g} kcal/100 g"))
+            .ToList();
+    }
+
+    private void AddToDraft()
+    {
+        if (pickFoodId is not Guid id || pickGrams <= 0) return;
+
+        var food = foods.FirstOrDefault(f => f.Id == id);
+        if (food is null) return;
+
+        AddFoodToDraft(food, pickGrams);
+
+        pickFoodId = null;
+        pickGrams = 100;
+    }
+
+    private void AddFoodToDraft(FoodItem food, int grams)
+    {
+        // Samma råvara två gånger blir en rad med summerad mängd
+        var existing = draftIngredients.FirstOrDefault(d => d.Food.Id == food.Id);
+        if (existing is not null)
+            draftIngredients[draftIngredients.IndexOf(existing)] =
+                existing with { Grams = existing.Grams + grams };
+        else
+            draftIngredients.Add(new DraftIngredient(food, grams));
+    }
+
+    // Nya råvaror sparas direkt i biblioteket - de är globala och ska finnas
+    // kvar även om du avbryter receptet.
+    private async Task SaveNewFood()
+    {
+        try
+        {
+            var food = new FoodItem
+            {
+                Name = newFoodName.Trim(),
+                CaloriesPer100g = newFoodKcal,
+                Category = newFoodCategory,
+                Vegan = nfVegan,
+                Lactose = nfLactose,
+                Gluten = nfGluten,
+                Nuts = nfNuts,
+                MilkPowder = nfMilkPowder
+            };
+
+            await FoodRepo.AddAsync(food);
+            await LoadFoodsAsync();
+
+            AddFoodToDraft(food, Math.Max(1, newFoodGrams));
+
+            CancelNewFood();
+            errorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void CancelNewFood()
+    {
+        isCreatingFood = false;
+        newFoodName = ""; newFoodKcal = 0;
+        newFoodCategory = FoodCategory.Other;
+        nfVegan = nfLactose = nfGluten = nfNuts = nfMilkPowder = false;
+        newFoodGrams = 100;
+    }
+
+    private void AddStep()
+    {
+        if (string.IsNullOrWhiteSpace(stepText)) return;
+
+        draftSteps.Add(new DraftStep(
+            stepText.Trim(),
+            stepMinutes is > 0 ? stepMinutes : null));
+
+        stepText = "";
+        stepMinutes = null;
+    }
+
+    private void MoveStep(int index, int direction)
+    {
+        int target = index + direction;
+        if (target < 0 || target >= draftSteps.Count) return;
+
+        (draftSteps[index], draftSteps[target]) = (draftSteps[target], draftSteps[index]);
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            var recipe = new Recipe
+            {
+                Name = name.Trim(),
+                Portions = Math.Max(1, portions),
+                Instructions = string.IsNullOrWhiteSpace(instructions) ? null : instructions.Trim()
+            };
+
+            // Sätt bara FoodId, aldrig Food-objektet. Annars försöker EF
+            // spara råvaran på nytt och du får dubbletter i FoodItems.
+            foreach (var d in draftIngredients)
+            {
+                recipe.Ingredients.Add(new RecipeIngredient
+                {
+                    RecipeId = recipe.Id,
+                    FoodId = d.Food.Id,
+                    WeightInGrams = d.Grams
+                });
+            }
+
+            for (int i = 0; i < draftSteps.Count; i++)
+            {
+                recipe.Steps.Add(new RecipeStep
+                {
+                    RecipeId = recipe.Id,
+                    StepNumber = i + 1,
+                    Text = draftSteps[i].Text,
+                    Minutes = draftSteps[i].Minutes
+                });
+            }
+
+            await RecipeRepo.AddAsync(recipe);
+            Nav.NavigateTo($"/recipe/{recipe.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private static string ToSwedish(FoodCategory c) => c switch
+    {
+        FoodCategory.Grain => "Spannmål",
+        FoodCategory.Dairy => "Mejeri",
+        FoodCategory.Protein => "Protein",
+        FoodCategory.Vegetable => "Grönt",
+        FoodCategory.Fruit => "Frukt",
+        FoodCategory.Fat => "Fett",
+        FoodCategory.Treat => "Fika",
+        FoodCategory.Drink => "Dryck",
+        _ => "Övrigt"
+    };
+}
