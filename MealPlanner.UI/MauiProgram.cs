@@ -38,6 +38,8 @@ public static class MauiProgram
         builder.Services.AddScoped<IFoodItemRepository, FoodItemRepository>();
         builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
         builder.Services.AddScoped<IShoppingRepository, ShoppingRepository>();
+        builder.Services.AddScoped<IProfileRepository, ProfileRepository>();
+        builder.Services.AddScoped<ProfileService>();
         builder.Services.AddScoped<WeeklyPlannerService>();
         builder.Services.AddScoped<ShoppingListService>();
 

@@ -31,10 +31,6 @@ else if (week is not null)
             <span class="unit">kcal totalt</span>
             <span class="sub">snitt @(week.TotalWeeklyCalories / 7) kcal/dag</span>
         </div>
-
-        <button class="btn-primary" @onclick="CopyToNext" disabled="@isWorking">
-            Kopiera till nästa vecka
-        </button>
     </section>
 
     <section class="day-list">
@@ -55,6 +51,10 @@ else if (week is not null)
             </button>
         }
     </section>
+
+    <button class="btn-primary mt-20" @onclick="CopyToNext" disabled="@isWorking">
+        Kopiera till nästa vecka
+    </button>
 }
 
 @code {
